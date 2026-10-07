@@ -1,0 +1,12 @@
+<script>/* BSE overlay: 从本应用目录加载本地化层（绕过 base.asar）
+   只加载框架与语言清单，具体词条与启动由清单里生成的脚本负责 */
+(function () {
+  var fallback = location.href.replace(/[?#].*$/, "");
+  var dir = window.__BSE_APP_DIR__ || fallback.slice(0, fallback.lastIndexOf("/") + 1);
+  var files = ["Assets/i18n/bse-i18n.js", "Assets/i18n/locales/index.js"];
+  var html = "";
+  for (var i = 0; i < files.length; i++) {
+    html += "<scr" + "ipt src=\"" + dir + files[i] + "\"></scr" + "ipt>";
+  }
+  document.write(html);
+})();</script>
