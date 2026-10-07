@@ -1,0 +1,15 @@
+<script>/* BSE overlay: 相对资源指向原版 base.asar，并记下本应用目录 */
+(function () {
+  try {
+    var here = location.href.replace(/[?#].*$/, "");
+    var dir = here.slice(0, here.lastIndexOf("/") + 1);
+    window.__BSE_APP_DIR__ = dir;
+    var base;
+    if (/\/app\.asar\/$/.test(dir)) base = dir.replace(/app\.asar\/$/, "base.asar/");
+    else if (/\/app\/$/.test(dir)) base = dir.slice(0, -4) + "base.asar/";
+    else base = dir + "base.asar/";
+    var tag = document.createElement("base");
+    tag.href = base;
+    (document.head || document.documentElement).appendChild(tag);
+  } catch (e) {}
+})();</script>
