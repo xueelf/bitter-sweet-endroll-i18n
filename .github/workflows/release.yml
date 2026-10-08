@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun ci --ignore-scripts
+
+      - name: Verify
+        run: bun run format:check && bun run lint && bun run typecheck && bun test
+
+      - name: Package release zip
+        run: |
+          mkdir -p dist
+          cp release/patch.bat release/使用说明.md release/app.asar dist/
+          cd dist
+          zip -r "../bitter-sweet-endroll-i18n-${GITHUB_REF_NAME}.zip" .
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            "bitter-sweet-endroll-i18n-${GITHUB_REF_NAME}.zip"

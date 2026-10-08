@@ -1,0 +1,4 @@
+# 换行符统一：仓库内文本一律 LF，批处理需 CRLF，字体按二进制处理。
+* text=auto eol=lf
+*.bat text eol=crlf
+*.otf binary

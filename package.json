@@ -1,0 +1,46 @@
+{
+  "name": "bitter-sweet-endroll-i18n",
+  "version": "1.1.1",
+  "private": true,
+  "description": "游戏《ビタースイートエンドロール ～Bitter Sweets／The End～》的非官方多语言补丁，安装后可为游戏加入一套本地化框架。",
+  "license": "MIT",
+  "author": "Yuki <admin@yuki.sh>",
+  "type": "module",
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "extract": "bun run scripts/extract.ts",
+    "format": "prettier \"**/*.{json,md,ts,yaml,yml}\" --write --experimental-cli",
+    "format:check": "prettier \"**/*.{json,md,ts,yaml,yml}\" --check --experimental-cli",
+    "lint": "eslint --cache",
+    "lint:fix": "eslint --fix --cache",
+    "prepare": "husky",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
+    "@commitlint/types": "^21.2.0",
+    "@electron/asar": "^3.2.0",
+    "@eslint/js": "^10.0.1",
+    "@types/bun": "^1.4.2",
+    "eslint": "^10.9.1",
+    "husky": "^9.1.7",
+    "prettier": "^3.9.6",
+    "prettier-plugin-sort": "^1.1.1",
+    "typescript-eslint": "^8.70.0"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "bun",
+      "onFail": "warn"
+    },
+    "packageManager": {
+      "name": "bun",
+      "onFail": "warn"
+    }
+  }
+}
