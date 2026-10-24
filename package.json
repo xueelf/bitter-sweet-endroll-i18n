@@ -28,7 +28,7 @@
     "husky": "^9.1.7",
     "prettier": "^3.9.10",
     "prettier-plugin-sort": "^1.1.1",
-    "typescript-eslint": "^8.70.0"
+    "typescript-eslint": "^8.71.2"
   },
   "peerDependencies": {
     "typescript": "^6.0.3"
