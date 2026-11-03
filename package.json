@@ -11,6 +11,7 @@
     "extract": "bun run scripts/extract.ts",
     "format": "prettier \"**/*.{json,md,ts,yaml,yml}\" --write --experimental-cli",
     "format:check": "prettier \"**/*.{json,md,ts,yaml,yml}\" --check --experimental-cli",
+    "installer": "bun run scripts/installer.ts",
     "lint": "eslint --cache",
     "lint:fix": "eslint --fix --cache",
     "prepare": "husky",

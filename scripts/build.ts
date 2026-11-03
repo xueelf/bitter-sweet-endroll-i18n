@@ -1,4 +1,4 @@
-/* 构建入口：从原版归档提取文件，叠加 overlay 与 locales，打包 release/app.asar。 */
+/* 构建入口：从原版归档提取文件，叠加 overlay 与 locales，打包 installer/app.asar。 */
 import {
   copyFile,
   mkdir,
@@ -25,7 +25,7 @@ import { assertVersions } from '~/utils/version';
 const root = resolve(import.meta.dir, '..');
 const localesDir = join(root, 'locales');
 const overlayDir = join(root, 'overlay');
-const releaseAsar = join(root, 'release', 'app.asar');
+const installerAsar = join(root, 'installer', 'app.asar');
 
 /** 把 src/ 下的 TS 打成一个经典脚本。 */
 async function buildFramework(i18nDir: string): Promise<void> {
@@ -98,13 +98,13 @@ async function main(): Promise<void> {
 
     await assertVersions(root, appDir);
 
-    await mkdir(dirname(releaseAsar), { recursive: true });
-    await createPackage(appDir, releaseAsar);
+    await mkdir(dirname(installerAsar), { recursive: true });
+    await createPackage(appDir, installerAsar);
   } finally {
     await rm(workDir, { recursive: true, force: true });
   }
 
-  console.log('release/app.asar');
+  console.log('installer/app.asar');
 }
 
 await main();

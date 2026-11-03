@@ -1,3 +1,8 @@
 .DS_Store
 .eslintcache
 node_modules/
+installer/bin/
+installer/obj/
+installer/payload/
+release/*.exe
+release/*.pdb

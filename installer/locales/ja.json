@@ -1,0 +1,46 @@
+{
+  "menu.header": "Bitter Sweet Endroll 多言語パッチ v{0}",
+  "menu.game_dir": "ゲームディレクトリ: {0}",
+  "menu.state": "インストール状態: {0}",
+  "menu.install": "1) パッチをインストール / 更新",
+  "menu.uninstall": "2) パッチをアンインストール（元に戻す）",
+  "menu.exit": "3) 終了",
+  "menu.prompt": "選択 [1/2/3]: ",
+  "menu.invalid": "入力が正しくありません。もう一度選んでください。",
+  "menu.pause": "何かキーを押すとメニューに戻ります。",
+
+  "state.installed": "インストール済み",
+  "state.not_installed": "未インストール",
+  "state.missing": "app.asar がありません（場所を確認してください）",
+
+  "game.place_in_game_dir": "本プログラムをゲームのルート（Data フォルダと同じ場所）に置いてから実行してください。",
+  "game.not_game_dir": "Data\\BitterSweetEndroll.exe が見つかりません。ゲームディレクトリではない可能性があります。",
+  "game.not_game_dir_force": "（場所に間違いがない場合は --force で続行できます。）",
+  "game.running": "ゲームが起動中です。終了してから実行してください。",
+  "game.running_force": "（--force でこのチェックを飛ばせますが、推奨しません。）",
+  "game.version_mismatch": "ゲームのバージョン {0} を検出しました。このパッチは {1} 向けです。続行できますが、完全には対応しない可能性があります。",
+
+  "install.reading": "内蔵パッチを読み込んでいます...",
+  "install.payload_ok": "内蔵パッチの検証に成功しました（{0}）。",
+  "install.backup": "元の app.asar を base.asar にバックアップしています",
+  "install.writing": "パッチ app.asar を書き込んでいます...",
+  "install.verify": "書き込み結果を検証しています...",
+  "install.done": "インストール完了。ゲームを起動し、タイトル画面か設定から「中文」を選んでください。",
+  "install.update_done": "更新完了。元のバックアップ（base.asar）は保持されています。",
+  "install.uninstall_hint": "元に戻すには、ゲームを終了してから本プログラムを再実行し、2 を選んでください。",
+
+  "uninstall.not_installed": "base.asar が見つかりません。パッチは未インストールの可能性があります。",
+  "uninstall.done": "アンインストール完了。ゲームは元の状態に戻りました。",
+
+  "error.prefix": "エラー: {0}",
+  "error.unknown_arg": "不明なオプション: {0}",
+  "error.payload_missing": "インストーラー内にパッチデータ（app.asar）がありません。ファイルが破損している可能性があります。",
+  "error.payload_hash": "内蔵パッチの検証に失敗しました。ファイルが破損している可能性があるため中止します。",
+  "error.write": "書き込みに失敗しました: {0}",
+  "error.no_original": "元の app.asar が見つからないためインストールできません。ゲームファイルの整合性を確認してください。",
+
+  "dry_run.done": "確認のみ完了しました（--dry-run、ファイルは変更していません）。",
+  "cli.pause": "何かキーを押すと終了します。",
+
+  "help.text": "Bitter Sweet Endroll 多言語パッチ v{1}\n\n使い方:\n  \"{0}\" [オプション]\n\n本プログラムをゲームのルート（Data フォルダと同じ場所）に置き、引数なしで実行するとメニューを表示します。\n\nオプション:\n  --uninstall    アンインストール（メニューの 2 と同じ）\n  --dry-run      確認のみ、ファイルは変更しません\n  --force        ゲームディレクトリ / 起動中チェックを省略（非推奨）\n  --no-pause     終了時にキー入力を待たない\n  -h, --help     ヘルプを表示\n\n例:\n  \"{0}\"            メニューを開く\n  \"{0}\" --uninstall  元に戻す"
+}

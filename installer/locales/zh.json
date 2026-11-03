@@ -1,0 +1,46 @@
+{
+  "menu.header": "Bitter Sweet Endroll 多语言补丁 v{0}",
+  "menu.game_dir": "游戏目录：{0}",
+  "menu.state": "安装状态：{0}",
+  "menu.install": "1) 安装 / 更新补丁",
+  "menu.uninstall": "2) 卸载补丁（还原原版）",
+  "menu.exit": "3) 退出",
+  "menu.prompt": "请选择 [1/2/3]：",
+  "menu.invalid": "输入无效，请重新选择。",
+  "menu.pause": "按任意键返回菜单。",
+
+  "state.installed": "已安装",
+  "state.not_installed": "未安装",
+  "state.missing": "缺少 app.asar（请确认安装位置）",
+
+  "game.place_in_game_dir": "请把本程序放到游戏根目录（与 Data 文件夹同级）后再运行。",
+  "game.not_game_dir": "没有找到 Data\\BitterSweetEndroll.exe，这里可能不是游戏目录。",
+  "game.not_game_dir_force": "（确认位置无误时，可加 --force 继续。）",
+  "game.running": "检测到游戏正在运行，请先完全退出游戏。",
+  "game.running_force": "（加 --force 可跳过此检查，但不推荐。）",
+  "game.version_mismatch": "检测到游戏版本 {0}，本补丁针对 {1} 制作；可以继续，但可能不完全兼容。",
+
+  "install.reading": "正在读取内置补丁...",
+  "install.payload_ok": "内置补丁校验通过（{0}）。",
+  "install.backup": "正在备份原版 app.asar -> base.asar",
+  "install.writing": "正在写入补丁 app.asar...",
+  "install.verify": "正在校验写入结果...",
+  "install.done": "安装完成。启动游戏后，在标题画面或设置里选择「中文」即可。",
+  "install.update_done": "更新完成。已保留原版备份（base.asar）。",
+  "install.uninstall_hint": "如需还原原版，请退出游戏后再次运行本程序，选择 2。",
+
+  "uninstall.not_installed": "未检测到 base.asar，补丁可能尚未安装。",
+  "uninstall.done": "卸载完成，游戏已还原为原版。",
+
+  "error.prefix": "错误：{0}",
+  "error.unknown_arg": "未知选项：{0}",
+  "error.payload_missing": "安装器内部缺少补丁数据（app.asar），文件可能已损坏。",
+  "error.payload_hash": "内置补丁校验失败，文件可能已损坏，已中止。",
+  "error.write": "写入失败：{0}",
+  "error.no_original": "未找到原版 app.asar，无法安装。请先用游戏平台校验文件完整性。",
+
+  "dry_run.done": "检查完成（--dry-run，未修改任何文件）。",
+  "cli.pause": "按任意键退出。",
+
+  "help.text": "Bitter Sweet Endroll 多语言补丁 v{1}\n\n用法：\n  \"{0}\" [选项]\n\n把本程序放到游戏根目录（与 Data 文件夹同级），不带参数运行会显示菜单。\n\n选项：\n  --uninstall    直接卸载（等同菜单 2）\n  --dry-run      只检查，不修改文件\n  --force        跳过游戏目录 / 运行中检查（不推荐）\n  --no-pause     结束时不等待按键\n  -h, --help     显示帮助\n\n示例：\n  \"{0}\"            打开菜单\n  \"{0}\" --uninstall  直接还原原版"
+}

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-/** 校对版本：本仓库、游戏本体、安装器三处必须一致。 */
+/** 校对版本：本仓库与游戏本体必须一致；安装器版本由 package.json 注入。 */
 export async function assertVersions(
   root: string,
   appDir: string,
@@ -16,15 +16,10 @@ export async function assertVersions(
   ) as {
     version?: string;
   };
-  const installer = await readFile(join(root, 'release', 'patch.bat'), 'utf8');
-  const installerMatch = /set\s+"?GAME_VERSION=([0-9][^"\r\n]*)"?/i.exec(
-    installer,
-  );
 
   const versions: Record<string, string> = {
     'package.json': own.version ?? '',
     游戏本体: game.version ?? '',
-    'patch.bat': installerMatch?.[1] ?? '',
   };
 
   if (
