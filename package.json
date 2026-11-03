@@ -2,7 +2,7 @@
   "name": "bitter-sweet-endroll-i18n",
   "version": "1.1.1",
   "private": true,
-  "description": "游戏《ビタースイートエンドロール ～Bitter Sweets／The End～》的非官方多语言补丁，安装后可为游戏加入一套本地化框架。",
+  "description": "游戏《ビタースイートエンドロール ～Bitter Sweets／The End～》的非官方多语言补丁，在程序「设置」界面内添加多语言菜单。",
   "license": "MIT",
   "author": "Yuki <admin@yuki.sh>",
   "type": "module",
