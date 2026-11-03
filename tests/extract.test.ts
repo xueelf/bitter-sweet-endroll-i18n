@@ -1,11 +1,15 @@
-import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { fromGameData, fromHtml } from '~/scripts/extract';
 
 const dir = mkdtempSync(join(tmpdir(), 'bse-extract-'));
+
+afterAll(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
 
 describe('extract', () => {
   test('HTML 里的字面量按标签拆段，属性残片丢掉', () => {
