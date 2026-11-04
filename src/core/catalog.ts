@@ -43,16 +43,57 @@ interface Slot {
   messages: Partial<Messages> | null;
   fragments: Record<string, string>;
   map: Record<string, string>;
+  templates: CompiledTemplate[];
+  mapPatterns: Map<string, CompiledTemplate>;
   patterns: CompiledTemplate[];
 }
 
 const slots = new Map<string, Slot>();
+
+/** 词典版本号：词条或模板变化时递增，供片段缓存判断失效。 */
+let revision = 0;
+
+export function catalogRevision(): number {
+  return revision;
+}
+
+/** 两个编译模板是否等价。 */
+function samePattern(a: CompiledTemplate, b: CompiledTemplate): boolean {
+  return a.re.source === b.re.source && a.to === b.to;
+}
+
+/** 两个编译模板列表是否等价。 */
+function samePatterns(
+  a: readonly CompiledTemplate[],
+  b: readonly CompiledTemplate[],
+): boolean {
+  return (
+    a.length === b.length &&
+    a.every((pattern, index) => samePattern(pattern, b[index]!))
+  );
+}
+
+/** 两个字符串表是否等价（用于语言元信息与片段表的幂等合并）。 */
+function sameRecord<T extends object>(a: T | null, b: T): boolean {
+  const aKeys = Object.keys(a ?? {}) as (keyof T)[];
+  const bKeys = Object.keys(b) as (keyof T)[];
+  return (
+    aKeys.length === bKeys.length && bKeys.every(key => a?.[key] === b[key])
+  );
+}
+
+function rebuildPatterns(slot: Slot): void {
+  slot.patterns = [...slot.templates, ...slot.mapPatterns.values()];
+}
 
 /** 词条或模板里的 ${...} 占位，整段作为占位名。 */
 const PLACEHOLDER = /\$\{[^}]*\}/g;
 
 const escapeRegExp = (text: string): string =>
   text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** 译文里的字面 $ 要转义，否则 String.replace 会把它当成捕获引用。 */
+const escapeReplacement = (text: string): string => text.replace(/\$/g, '$$$$');
 
 /** 把 from/to 编译成整串正则：from 的占位依次成捕获组，to 按占位顺序回填。 */
 function compileTemplate(from: string, to: string): CompiledTemplate | null {
@@ -83,10 +124,18 @@ function compileTemplate(from: string, to: string): CompiledTemplate | null {
   }
 
   const targets = [...to.matchAll(PLACEHOLDER)].map(match => match[0]);
-  const replacement = to.replace(PLACEHOLDER, placeholder => {
-    const index = targets.indexOf(placeholder);
-    return index >= 0 && index < names.length ? `$${index + 1}` : placeholder;
-  });
+  const replacement = to
+    .split(/(\$\{[^}]*\})/)
+    .map((part, index) => {
+      if (index % 2 === 1) {
+        const target = targets.indexOf(part);
+        return target >= 0 && target < names.length
+          ? `$${target + 1}`
+          : escapeReplacement(part);
+      }
+      return escapeReplacement(part);
+    })
+    .join('');
 
   return { re: new RegExp(`^${source}$`), to: replacement };
 }
@@ -114,6 +163,8 @@ function slotFor(id: string): Slot {
       messages: null,
       fragments: {},
       map: {},
+      templates: [],
+      mapPatterns: new Map(),
       patterns: [],
     };
     slots.set(id, slot);
@@ -128,17 +179,37 @@ export function registerLocales(list: readonly LocaleMeta[]): void {
       continue;
     }
     const slot = slotFor(meta.id);
-    if (meta.label) {
+    let changed = false;
+
+    if (meta.label && slot.label !== meta.label) {
       slot.label = meta.label;
+      changed = true;
     }
     if (meta.messages) {
-      slot.messages = { ...slot.messages, ...meta.messages };
+      const merged = { ...slot.messages, ...meta.messages };
+      if (!sameRecord(slot.messages, merged)) {
+        slot.messages = merged;
+        changed = true;
+      }
     }
     if (meta.fragments) {
-      slot.fragments = { ...slot.fragments, ...meta.fragments };
+      const merged = { ...slot.fragments, ...meta.fragments };
+      if (!sameRecord(slot.fragments, merged)) {
+        slot.fragments = merged;
+        changed = true;
+      }
     }
-    if (meta.templates?.length) {
-      slot.patterns.push(...compileTemplates(meta.templates));
+    if (meta.templates) {
+      const compiled = compileTemplates(meta.templates);
+      if (!samePatterns(slot.templates, compiled)) {
+        slot.templates = compiled;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      rebuildPatterns(slot);
+      revision++;
     }
   }
 }
@@ -149,6 +220,7 @@ export function mergeMap(id: string, map: Record<string, string | null>): void {
     return;
   }
   const slot = slotFor(id);
+  let changed = false;
   for (const [key, value] of Object.entries(map)) {
     if (typeof value !== 'string' || !value) {
       continue;
@@ -156,11 +228,22 @@ export function mergeMap(id: string, map: Record<string, string | null>): void {
     if (hasPlaceholder(key)) {
       const pattern = compileTemplate(key, value);
       if (pattern) {
-        slot.patterns.push(pattern);
+        const previous = slot.mapPatterns.get(key);
+        if (!previous || !samePattern(previous, pattern)) {
+          slot.mapPatterns.set(key, pattern);
+          changed = true;
+        }
       }
       continue;
     }
-    slot.map[key] = value;
+    if (slot.map[key] !== value) {
+      slot.map[key] = value;
+      changed = true;
+    }
+  }
+  if (changed) {
+    rebuildPatterns(slot);
+    revision++;
   }
 }
 

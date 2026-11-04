@@ -71,4 +71,48 @@ describe('catalog', () => {
       '前123后',
     );
   });
+
+  test('译文里的字面美元符号不会被当成捕获引用', () => {
+    catalog.mergeMap('test-dollar', { '価格${n}': '价格 $${a}' });
+    const [pattern] = catalog.patternsFor('test-dollar');
+    expect('価格100'.replace(pattern!.re, pattern!.to)).toBe('价格 $100');
+  });
+
+  test('重复登记同一模板不会重复叠加', () => {
+    const meta = {
+      id: 'test-idempotent-template',
+      label: '测试',
+      templates: [{ from: '${n}日', to: '第${a}天' }],
+    };
+    catalog.registerLocales([meta]);
+    catalog.registerLocales([meta]);
+    expect(catalog.patternsFor('test-idempotent-template')).toHaveLength(1);
+  });
+
+  test('重复合并同一占位词条不会重复叠加', () => {
+    catalog.mergeMap('test-idempotent-map', { '${n}日': '第${a}天' });
+    catalog.mergeMap('test-idempotent-map', { '${n}日': '第${a}天' });
+    expect(catalog.patternsFor('test-idempotent-map')).toHaveLength(1);
+  });
+
+  test('重复合并相同占位词条不会推进 revision', () => {
+    catalog.mergeMap('test-idempotent-rev', { '${n}日': '第${a}天' });
+    const before = catalog.catalogRevision();
+    catalog.mergeMap('test-idempotent-rev', { '${n}日': '第${a}天' });
+    expect(catalog.catalogRevision()).toBe(before);
+  });
+
+  test('重复登记相同语言信息不会推进 revision', () => {
+    const meta = {
+      id: 'test-idempotent-meta',
+      label: '测试',
+      messages: { language: '语言', startup: '启动中…' },
+      fragments: { 朝: '早上' },
+      templates: [{ from: '${n}日', to: '第${a}天' }],
+    };
+    catalog.registerLocales([meta]);
+    const before = catalog.catalogRevision();
+    catalog.registerLocales([meta]);
+    expect(catalog.catalogRevision()).toBe(before);
+  });
 });
