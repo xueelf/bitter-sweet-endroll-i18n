@@ -26,6 +26,7 @@
     "@eslint/js": "^10.0.1",
     "@types/bun": "^1.4.4",
     "eslint": "^10.13.0",
+    "happy-dom": "^21.0.4",
     "husky": "^9.1.7",
     "prettier": "^3.9.10",
     "prettier-plugin-sort": "^1.1.1",
