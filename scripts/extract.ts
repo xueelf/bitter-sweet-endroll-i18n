@@ -4,12 +4,14 @@
  *
  * 用法：bun run extract -- --game "<解包目录>"
  */
-import { readFileSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 
 import { MUSIC_LIST_KEY, SKIP_KEY_PATTERN } from '#/config';
 import { JAPANESE_PATTERN, PATH_PATTERN } from '#/core/text';
+import { extractEntry, findOriginalAsar, parseGameArg } from '~/utils/asar';
 
 /** 语言代码，与 locales/<id>/ 对应。 */
 const LOCALE = 'zh';
@@ -45,12 +47,6 @@ const SOURCES: {
 const SKIP_VALUE = /^(?:m:|bgm_|se_|v\d)/;
 
 const root = resolve(import.meta.dir, '..');
-
-function parseArg(name: string): string | undefined {
-  const args = process.argv.slice(2);
-  const index = args.findIndex(arg => arg === name);
-  return index >= 0 ? args[index + 1] : undefined;
-}
 
 function isText(value: string): boolean {
   if (!value || value.length > 20000) {
@@ -154,10 +150,29 @@ function htmlSegments(literal: string, keepPlaceholders: boolean): string[] {
     .filter(Boolean);
 }
 
+/** 只含半截标签的字面量是代码拼接片段，不是独立 UI 文案。 */
+function isHtmlFragment(literal: string): boolean {
+  if (!/<[^>]+>/.test(literal)) {
+    return false;
+  }
+  if (/^\s*<\//.test(literal)) {
+    return true;
+  }
+  const trailingOpen = /<[^/][^>]*>\s*$/.exec(literal);
+  if (!trailingOpen || /<\/[^>]+>/.test(literal)) {
+    return false;
+  }
+  // 标签前是完整句子（带句末标点）时，这是正文加换行，不是拼接残片。
+  return !/[。！？]/.test(literal.slice(0, trailingOpen.index));
+}
+
 export function fromHtml(path: string): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   eachLiteral(path, (literal, template) => {
+    if (isHtmlFragment(literal)) {
+      return;
+    }
     for (const segment of htmlSegments(literal, template)) {
       push(out, seen, segment);
     }
@@ -199,8 +214,13 @@ function walk(
 
 export function fromGameData(path: string): string[] {
   const raw = readFileSync(path, 'utf8');
+  const marker = raw.indexOf('__GAME_DATA__');
+  const start = raw.indexOf('=', marker >= 0 ? marker : 0);
+  if (start < 0) {
+    throw new Error('GameData.js 里找不到 __GAME_DATA__ 赋值。');
+  }
   const json = raw
-    .slice(raw.indexOf('=') + 1)
+    .slice(start + 1)
     .trim()
     .replace(/;\s*$/, '');
   const out: string[] = [];
@@ -239,45 +259,87 @@ function emit(strings: string[], dict: Record<string, string>): string {
   return JSON.stringify(map, null, 2) + '\n';
 }
 
-async function main(): Promise<void> {
-  const gameArg = parseArg('--game');
-  const gameDir = gameArg
-    ? resolve(gameArg)
-    : join(root, '..', 'Data', 'resources', 'unpacked_app');
+/** 解析抽取源：优先当前 asar，找不到再退回 unpacked_app。 */
+export async function resolveGameDir(): Promise<{
+  dir: string;
+  cleanup: () => Promise<void>;
+}> {
+  const gameArg = parseGameArg();
+  if (gameArg) {
+    const dir = resolve(gameArg);
+    if (existsSync(join(dir, 'GameMain.html'))) {
+      return { dir, cleanup: async () => {} };
+    }
+  }
 
+  let asarPath: string;
+  try {
+    asarPath = findOriginalAsar(root);
+  } catch (error) {
+    const fallback = join(root, '..', 'Data', 'resources', 'unpacked_app');
+    if (existsSync(join(fallback, 'GameMain.html'))) {
+      return { dir: fallback, cleanup: async () => {} };
+    }
+    throw error;
+  }
+
+  const dir = await mkdtemp(join(tmpdir(), 'bse-extract-'));
+  try {
+    for (const { file } of SOURCES) {
+      const target = join(dir, file);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, extractEntry(asarPath, file));
+    }
+  } catch (error) {
+    await rm(dir, { recursive: true, force: true });
+    throw error;
+  }
+  return {
+    dir,
+    cleanup: () => rm(dir, { recursive: true, force: true }),
+  };
+}
+
+async function main(): Promise<void> {
   const localeDir = join(root, 'locales', LOCALE);
   const dict = await loadExisting(localeDir);
+  const { dir: gameDir, cleanup } = await resolveGameDir();
 
-  for (const source of SOURCES) {
-    const strings = source.extract(join(gameDir, source.file));
-    const target = join(localeDir, source.out);
-    await mkdir(dirname(target), { recursive: true });
+  try {
+    for (const source of SOURCES) {
+      const strings = source.extract(join(gameDir, source.file));
+      const target = join(localeDir, source.out);
+      await mkdir(dirname(target), { recursive: true });
 
-    // 源文件里消失的串，译文也会丢，提示一下。
-    const file = Bun.file(target);
-    const previous = (await file.exists())
-      ? ((await file.json()) as Record<string, string | null>)
-      : {};
-    const kept = new Set(strings);
-    const lost = Object.keys(previous).filter(
-      key => previous[key] && !kept.has(key),
-    );
-
-    await Bun.write(target, emit(strings, dict));
-
-    const translated = strings.filter(item => dict[item]).length;
-    console.log(
-      `${relative(root, target)}: ${strings.length} 条，已翻译 ${translated}`,
-    );
-    if (lost.length) {
-      const sample = lost
-        .slice(0, 3)
-        .map(key => JSON.stringify(key))
-        .join('、');
-      console.warn(
-        `警告：${lost.length} 条已有译文不再出现在源文件里，会随之丢失，例如 ${sample}`,
+      // 源文件里消失的串，译文也会丢，提示一下。
+      const file = Bun.file(target);
+      const previous = (await file.exists())
+        ? ((await file.json()) as Record<string, string | null>)
+        : {};
+      const kept = new Set(strings);
+      const lost = Object.keys(previous).filter(
+        key => previous[key] && !kept.has(key),
       );
+
+      await Bun.write(target, emit(strings, dict));
+
+      const translated = strings.filter(item => dict[item]).length;
+      const untranslated = strings.length - translated;
+      console.log(
+        `${relative(root, target)}: ${strings.length} 条，已翻译 ${translated}，未翻译 ${untranslated}`,
+      );
+      if (lost.length) {
+        const sample = lost
+          .slice(0, 3)
+          .map(key => JSON.stringify(key))
+          .join('、');
+        console.warn(
+          `警告：${lost.length} 条已有译文不再出现在源文件里，会随之丢失，例如 ${sample}`,
+        );
+      }
     }
+  } finally {
+    await cleanup();
   }
 }
 

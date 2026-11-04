@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 
 import { extractFile } from '@electron/asar';
 
@@ -14,10 +14,23 @@ const ORIGINAL_FILES = [
   'Assets/BuildFlags.js',
 ];
 
-function parseGameArg(): string | undefined {
+export function parseGameArg(): string | undefined {
   const args = process.argv.slice(2);
   const index = args.findIndex(arg => arg === '--game' || arg === '-g');
   return index >= 0 ? args[index + 1] : undefined;
+}
+
+/** 从归档里取一个条目；嵌套路径可能按创建平台使用反斜杠，按需回退。 */
+export function extractEntry(archive: string, file: string): Buffer {
+  try {
+    return extractFile(archive, file);
+  } catch (error) {
+    const native = file.split('/').join(sep);
+    if (native === file) {
+      throw error;
+    }
+    return extractFile(archive, native);
+  }
 }
 
 /** 定位原版归档：装过补丁时原版已改名 base.asar，否则是 app.asar。 */
@@ -59,7 +72,7 @@ export async function extractOriginals(
   for (const file of ORIGINAL_FILES) {
     let buffer: Buffer;
     try {
-      buffer = extractFile(asarPath, file);
+      buffer = extractEntry(asarPath, file);
     } catch {
       throw new Error(`原版归档里找不到 ${file}。`);
     }

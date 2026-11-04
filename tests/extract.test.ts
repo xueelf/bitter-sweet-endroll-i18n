@@ -43,6 +43,23 @@ var c = ' title="上へ">↑ 上へ';
     expect(keys).toContain('せりふ２');
   });
 
+  test('半截 HTML 标签字面量不作为独立文案', () => {
+    const file = join(dir, 'fragment.html');
+    writeFileSync(
+      file,
+      `<script>var a = "を <b>"; var b = "</b> 消費しました"; var c = "<b>設定</b>";</script>`,
+    );
+
+    expect(fromHtml(file)).toEqual(['設定']);
+  });
+
+  test('GameData 赋值前的注释里有等号也能解析', () => {
+    const file = join(dir, 'GameDataComment.js');
+    writeFileSync(file, `// a = b\nwindow.__GAME_DATA__ = {"text":"設定"};\n`);
+
+    expect(fromGameData(file)).toEqual(['設定']);
+  });
+
   test('GameData 遍历跳过 music[].name（曲名不翻译）', () => {
     const data = {
       characters: [
