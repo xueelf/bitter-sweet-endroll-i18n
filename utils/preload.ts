@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { DEFAULT_LOCALE, DEFAULT_MESSAGES, LOCALE_STORAGE_KEY } from '#/config';
 import type { LocaleMeta } from '#/core/catalog';
 
 /**
@@ -32,13 +33,19 @@ export async function patchPreload(
 
   const extra = (
     await readFile(join(overlayDir, 'electron-preload-patch.js'), 'utf8')
-  ).replaceAll('__LOCALES_JSON__', JSON.stringify(meta));
+  )
+    .replaceAll('__LOCALES_JSON__', JSON.stringify(meta))
+    .replaceAll('__LOCALE_STORAGE_KEY__', JSON.stringify(LOCALE_STORAGE_KEY))
+    .replaceAll('__DEFAULT_LOCALE__', JSON.stringify(DEFAULT_LOCALE));
+
+  const defaultStartup = JSON.stringify(DEFAULT_MESSAGES.startup);
 
   const patched = source
     .replace(insertAt, () => `${extra}\n${insertAt}`)
     .replace(
       coverText,
-      () => "content: ${JSON.stringify(bseMeta.startup || '起動中…')};",
+      () =>
+        `content: \${JSON.stringify(bseMeta.startup || ${defaultStartup})};`,
     );
 
   await writeFile(file, patched, 'utf8');

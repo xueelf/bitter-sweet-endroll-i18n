@@ -4,7 +4,11 @@
 const BSE_LOCALES = __LOCALES_JSON__;
 const bseMeta = (() => {
   try {
-    return BSE_LOCALES[localStorage.getItem('bse_locale') || 'ja'] || {};
+    return (
+      BSE_LOCALES[
+        localStorage.getItem(__LOCALE_STORAGE_KEY__) || __DEFAULT_LOCALE__
+      ] || {}
+    );
   } catch (_) {
     return {};
   }
