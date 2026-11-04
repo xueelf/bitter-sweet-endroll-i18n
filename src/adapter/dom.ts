@@ -1,4 +1,4 @@
-import { trUI } from '#/core/translate';
+import { trHTML, trUI } from '#/core/translate';
 
 import { patchFrameData } from './data';
 
@@ -18,8 +18,20 @@ const TRANSLATED_ATTRS = ['title', 'placeholder', 'aria-label'];
 /** 每个文本节点的日文原文，切换语言时按它重新查表。 */
 const textOriginals = new WeakMap<Text, string>();
 
+/** 每个文本节点最后一次写入的译文，用来区分游戏更新与自身写入。 */
+const textOutputs = new WeakMap<Text, string>();
+
 /** 每个元素上被翻译过的属性原文。 */
 const attrOriginals = new WeakMap<Element, Map<string, string>>();
+
+/** 每个元素属性最后一次写入的译文。 */
+const attrOutputs = new WeakMap<Element, Map<string, string>>();
+
+/** 行内 HTML 容器的日文原文，切换语言时按它重算。 */
+const htmlOriginals = new WeakMap<Element, string>();
+
+/** 行内 HTML 容器最后一次写入的译文，用来识别游戏改写。 */
+const htmlOutputs = new WeakMap<Element, string>();
 
 function originalText(node: Text): string {
   let original = textOriginals.get(node);
@@ -40,7 +52,11 @@ function skipElement(element: Element | null): boolean {
   if ((element as HTMLElement).isContentEditable) {
     return true;
   }
-  return element.hasAttribute('data-bse-no-i18n');
+  // 标记在容器上时，整棵子树都跳过。
+  return (
+    typeof element.closest === 'function' &&
+    element.closest('[data-bse-no-i18n]') !== null
+  );
 }
 
 function eachTextNode(root: Node, visit: (node: Text) => void): void {
@@ -59,24 +75,33 @@ function eachTextNode(root: Node, visit: (node: Text) => void): void {
   }
 }
 
+/** 翻译整段文本，保留首尾空白；空串或纯空白原样返回。 */
+function translatePreservingSpace(original: string): string {
+  const trimmed = original.trim();
+  if (!trimmed) {
+    return original;
+  }
+  const at = original.indexOf(trimmed);
+  return (
+    original.slice(0, at) + trUI(trimmed) + original.slice(at + trimmed.length)
+  );
+}
+
 function translateTextNode(node: Text): void {
+  if (skipElement(node.parentElement)) {
+    return;
+  }
+
   const original = originalText(node);
   if (!original) {
     return;
   }
 
-  const trimmed = original.trim();
-  if (!trimmed) {
-    return;
-  }
-
-  const translated = trUI(trimmed);
-  const at = original.indexOf(trimmed);
-  const next =
-    original.slice(0, at) + translated + original.slice(at + trimmed.length);
+  const next = translatePreservingSpace(original);
   if (node.nodeValue !== next) {
     node.nodeValue = next;
   }
+  textOutputs.set(node, next);
 }
 
 function translateAttributes(element: Element): void {
@@ -96,10 +121,85 @@ function translateAttributes(element: Element): void {
     }
 
     const original = saved.get(name)!;
-    const trimmed = original.trim();
-    const next = original.replace(trimmed, trUI(trimmed));
+    const next = translatePreservingSpace(original);
     if (element.getAttribute(name) !== next) {
       element.setAttribute(name, next);
+    }
+    let outputs = attrOutputs.get(element);
+    if (!outputs) {
+      outputs = new Map();
+      attrOutputs.set(element, outputs);
+    }
+    outputs.set(name, next);
+  }
+}
+
+/** 只含文字和这些行内格式标签的元素，可以安全地按整段 HTML 翻译。 */
+const INLINE_FORMATTING = new Set([
+  'B',
+  'I',
+  'EM',
+  'STRONG',
+  'SMALL',
+  'U',
+  'S',
+]);
+
+/**
+ * 游戏会把提示拆成「文字 + <b>数字</b> + 文字」。
+ * 这类元素按整段 HTML 走带标签的模板，避免逐文本节点翻译后留下日文和空格。
+ */
+export function translateInlineHtml(element: Element): boolean {
+  if (skipElement(element)) {
+    return false;
+  }
+  if (element.children.length === 0) {
+    return false;
+  }
+  for (const child of element.children) {
+    if (!INLINE_FORMATTING.has(child.tagName) || child.attributes.length > 0) {
+      return false;
+    }
+  }
+
+  const current = element.innerHTML;
+  const last = htmlOutputs.get(element);
+  if (last !== undefined && current !== last) {
+    // 游戏改写了容器内容，当前内容才是新的原文。
+    htmlOriginals.set(element, current);
+  }
+  let original = htmlOriginals.get(element);
+  if (original === undefined) {
+    original = current;
+    htmlOriginals.set(element, original);
+  }
+
+  const translated = trHTML(original);
+  if (translated === current) {
+    htmlOutputs.set(element, current);
+    return false;
+  }
+
+  element.innerHTML = translated;
+  htmlOutputs.set(element, translated);
+  return true;
+}
+
+function translateElement(element: Element): void {
+  if (skipElement(element)) {
+    return;
+  }
+
+  translateAttributes(element);
+  if (translateInlineHtml(element)) {
+    return;
+  }
+
+  for (const child of element.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      translateTextNode(child as Text);
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      translateElement(child as Element);
     }
   }
 }
@@ -115,17 +215,18 @@ export function translateTree(root: Node | null): void {
     return;
   }
 
-  if (root.nodeType !== Node.ELEMENT_NODE) {
-    return;
+  if (root.nodeType === Node.ELEMENT_NODE) {
+    translateElement(root as Element);
   }
+}
 
-  const element = root as Element;
-  if (skipElement(element)) {
-    return;
-  }
-
-  translateAttributes(element);
-  eachTextNode(root, translateTextNode);
+/** 取元素当前对应的日文原文，供兼容层判定使用。 */
+export function originalTextOf(element: Element): string {
+  let out = '';
+  eachTextNode(element, node => {
+    out += textOriginals.get(node) ?? node.nodeValue ?? '';
+  });
+  return out;
 }
 
 /** 把子树里的文本还原成日文原文，不改语言，只给需要看原文的判定用。 */
@@ -137,8 +238,95 @@ export function revertTree(root: Node | null): void {
     const original = textOriginals.get(node);
     if (original !== undefined && node.nodeValue !== original) {
       node.nodeValue = original;
+      textOutputs.set(node, original);
     }
   });
+}
+
+/** 处理游戏对已有文本/属性的更新；忽略自己写入产生的 mutation。 */
+export function applyMutation(mutation: MutationRecord): void {
+  if (mutation.type === 'characterData') {
+    const node = mutation.target as Text;
+    if (skipElement(node.parentElement)) {
+      return;
+    }
+    if (textOutputs.get(node) === node.nodeValue) {
+      return;
+    }
+    textOriginals.set(node, node.nodeValue ?? '');
+    textOutputs.delete(node);
+    translateTextNode(node);
+    return;
+  }
+
+  if (mutation.type !== 'attributes') {
+    return;
+  }
+  const element = mutation.target as Element;
+  if (skipElement(element)) {
+    return;
+  }
+  const name = mutation.attributeName;
+  if (!name || !TRANSLATED_ATTRS.includes(name)) {
+    return;
+  }
+
+  const current = element.getAttribute(name) ?? '';
+  if (attrOutputs.get(element)?.get(name) === current) {
+    return;
+  }
+  if (!current) {
+    attrOriginals.get(element)?.delete(name);
+    attrOutputs.get(element)?.delete(name);
+    return;
+  }
+
+  let originals = attrOriginals.get(element);
+  if (!originals) {
+    originals = new Map();
+    attrOriginals.set(element, originals);
+  }
+  originals.set(name, current);
+  attrOutputs.get(element)?.delete(name);
+  translateAttributes(element);
+}
+
+/** 主页面与 iframe 共用的观察选项。 */
+const MUTATION_OPTIONS: MutationObserverInit = {
+  childList: true,
+  subtree: true,
+  characterData: true,
+  attributes: true,
+  attributeFilter: TRANSLATED_ATTRS,
+};
+
+function handleMutations(
+  mutations: MutationRecord[],
+  onMutate?: () => void,
+): void {
+  for (const mutation of mutations) {
+    if (mutation.type === 'childList') {
+      // 容器被整体改写时按整段 HTML 重算，避免只翻到拆开的文本节点。
+      const target = mutation.target;
+      if (target.nodeType === Node.ELEMENT_NODE) {
+        const element = target as Element;
+        if (translateInlineHtml(element)) {
+          continue;
+        }
+        // 内容正是自己刚写入的译文，这次变化由翻译本身引起。
+        if (htmlOutputs.get(element) === element.innerHTML) {
+          continue;
+        }
+      }
+      for (const added of mutation.addedNodes) {
+        translateTree(added);
+        watchFrames(added);
+      }
+    } else {
+      applyMutation(mutation);
+    }
+  }
+  onMutate?.();
 }
 
 /** 同源 iframe 文档已接上的监听，按文档去重。 */
@@ -195,14 +383,10 @@ function translateFrame(frame: HTMLIFrameElement): void {
 
   if (!watchedFrames.has(doc)) {
     watchedFrames.add(doc);
-    new MutationObserver(mutations => {
-      for (const mutation of mutations) {
-        for (const added of mutation.addedNodes) {
-          translateTree(added);
-          watchFrames(added);
-        }
-      }
-    }).observe(doc.body, { childList: true, subtree: true });
+    new MutationObserver(mutations => handleMutations(mutations)).observe(
+      doc.body,
+      MUTATION_OPTIONS,
+    );
   }
 
   translateTree(doc.body);
@@ -240,15 +424,7 @@ export function refreshDom(): void {
 
 /** 监视 DOM 变化，翻译后插入的内容，onMutate 做与翻译无关的维护。 */
 export function startObserver(onMutate: () => void): void {
-  const observer = new MutationObserver(mutations => {
-    for (const mutation of mutations) {
-      for (const added of mutation.addedNodes) {
-        translateTree(added);
-        watchFrames(added);
-      }
-    }
-    onMutate();
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(mutations =>
+    handleMutations(mutations, onMutate),
+  ).observe(document.body, MUTATION_OPTIONS);
 }

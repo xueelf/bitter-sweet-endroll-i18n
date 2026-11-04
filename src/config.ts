@@ -70,14 +70,16 @@ export const FRAME_DATA_GLOBALS: readonly string[] = [
 /** 语言切换器挂载到的选项弹窗，由游戏设置界面创建。 */
 export const OPTIONS_MODAL_ID = 'v267OptsOv';
 
-/** 兼容层：取消类按钮，翻译后日文判定会失效，用中文兜底。 */
+/** 兼容层：取消类按钮按日文原文判定，避免依赖翻译后的文案。 */
 export const CANCEL_LABEL_PATTERN =
-  /^(?:返回|关闭|取消|取消吧|否|退出|结束|前往地图|返回地图|前往标题|返回标题|结束对话)$/;
+  /^(?:戻る|閉じる|キャンセル|やめる|いいえ|退出|終了|マップへ|マップへ戻る|タイトルへ|会話を終える)$/;
 
-/** 兼容层：地图设施按钮的中文别名，补回被翻译掉的能力标记。 */
+/** 兼容层：地图设施按钮的日文原名与中文别名。 */
 export const MAP_FACILITY_ALIASES: Readonly<Record<string, string>> = {
-  住处: 'home',
   自宅: 'home',
+  冒険者ギルド: 'guild',
+  ショップ: 'shop',
+  住处: 'home',
   冒险者公会: 'guild',
   冒险者协会: 'guild',
   商店: 'shop',

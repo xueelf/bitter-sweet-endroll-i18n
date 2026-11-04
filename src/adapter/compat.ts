@@ -1,7 +1,9 @@
 import { CANCEL_LABEL_PATTERN, MAP_FACILITY_ALIASES } from '#/config';
-import { trUI } from '#/core/translate';
 
-import { revertTree, translateTree } from './dom';
+import { originalTextOf, revertTree, translateTree } from './dom';
+
+/** 地点标签/按钮两端的装饰符号。 */
+const MAP_DECORATION = /[◆⌂]/g;
 
 /** 打过补丁的游戏函数，避免重复包装。 */
 interface Wrapped {
@@ -44,14 +46,15 @@ function installDayLabel(): void {
     base =>
       (...args: unknown[]): unknown => {
         const top = document.getElementById('top');
-        if (top) {
-          revertTree(top);
+        if (!top) {
+          return base(...args);
         }
-        const result = base(...args);
-        if (top) {
+        revertTree(top);
+        try {
+          return base(...args);
+        } finally {
           translateTree(top);
         }
-        return result;
       },
   );
   if (wrapped) {
@@ -59,7 +62,7 @@ function installDayLabel(): void {
   }
 }
 
-/** 顶栏地点标签：游戏按日文文本开面板，翻译后按中文文本接回来。 */
+/** 顶栏地点标签：按日文原文识别设施，避免依赖译文。 */
 function installLocationChips(): void {
   document.addEventListener(
     'click',
@@ -69,16 +72,20 @@ function installLocationChips(): void {
         return;
       }
       const plate = chip.querySelector('.plate');
-      const name = String(plate?.textContent ?? '')
-        .replace(/[◆⌂]/g, '')
+      const name = (originalTextOf(chip) || String(plate?.textContent ?? ''))
+        .replace(MAP_DECORATION, '')
         .trim();
-      const action = name.includes('住处')
-        ? window.openHome
-        : name.includes('商店')
-          ? window.openShop
-          : name.includes('冒险者公会')
-            ? window.openGuild
-            : undefined;
+      const kind = Object.entries(MAP_FACILITY_ALIASES).find(([alias]) =>
+        name.includes(alias),
+      )?.[1];
+      const action =
+        kind === 'home'
+          ? window.openHome
+          : kind === 'shop'
+            ? window.openShop
+            : kind === 'guild'
+              ? window.openGuild
+              : undefined;
       if (!action) {
         return;
       }
@@ -101,7 +108,7 @@ function installLogPlaceholder(): void {
       (...args: unknown[]): unknown => {
         try {
           const el = document.getElementById('log');
-          if (el && el.textContent === trUI('ログはまだありません。')) {
+          if (el && originalTextOf(el) === 'ログはまだありません。') {
             el.textContent = '';
           }
         } catch {
@@ -124,7 +131,10 @@ function installCancelAction(): void {
           if (base(element)) {
             return true;
           }
-          const text = String(element?.textContent ?? '')
+          if (!element) {
+            return false;
+          }
+          const text = originalTextOf(element)
             .replace(/\s+/g, '')
             .replace(/^[✕×❮←]+/, '');
           return CANCEL_LABEL_PATTERN.test(text);
@@ -145,8 +155,12 @@ function installMapButtons(): void {
       (...args: unknown[]): unknown => {
         try {
           for (const button of document.querySelectorAll('.v2PointBtn')) {
-            const kind =
-              MAP_FACILITY_ALIASES[String(button.textContent ?? '').trim()];
+            const text = (
+              originalTextOf(button) || String(button.textContent ?? '')
+            )
+              .replace(MAP_DECORATION, '')
+              .trim();
+            const kind = MAP_FACILITY_ALIASES[text];
             if (kind) {
               button.classList.add(
                 'v14FacilityMapBtn',
