@@ -59,6 +59,49 @@ async function listLocaleFiles(localeDir: string): Promise<string[]> {
   return out.sort();
 }
 
+/** 占位符结构：同名占位复用编号，用来校验 from/to 是否能一一对应。 */
+function placeholderShape(text: string): number[] {
+  const seen = new Map<string, number>();
+  const shape: number[] = [];
+  for (const match of text.matchAll(/\$\{[^}]*\}/g)) {
+    const name = match[0];
+    let index = seen.get(name);
+    if (index === undefined) {
+      index = seen.size;
+      seen.set(name, index);
+    }
+    shape.push(index);
+  }
+  return shape;
+}
+
+/** 运行期按序号替换的 {0}/{1}：去掉 ${...} 后再取，顺序和数量都要保留。 */
+function runtimeShape(text: string): string[] {
+  return [...text.replace(/\$\{[^}]*\}/g, '').matchAll(/\{[0-9]+\}/g)].map(
+    match => match[0],
+  );
+}
+
+/** 返回占位结构差异，结构一致时返回 null。 */
+function placeholderMismatch(key: string, value: string): string | null {
+  const need = placeholderShape(key);
+  const got = placeholderShape(value);
+  if (
+    need.length !== got.length ||
+    need.some((index, position) => index !== got[position])
+  ) {
+    return `${need.join(',')} → ${got.join(',')}`;
+  }
+
+  const needRuntime = runtimeShape(key);
+  const gotRuntime = runtimeShape(value);
+  if (needRuntime.join() !== gotRuntime.join()) {
+    return `${needRuntime.join('')} → ${gotRuntime.join('')}`;
+  }
+
+  return null;
+}
+
 /** 词条打进补丁：去掉未翻译条目，包成经典脚本，全空的文件跳过。 */
 export async function prepareLocaleData(
   localesDir: string,
@@ -71,6 +114,7 @@ export async function prepareLocaleData(
     const sourceDir = join(localesDir, id);
     const targetDir = join(appLocalesDir, id);
     const list: string[] = [];
+    let untranslated = 0;
 
     for (const rel of await listLocaleFiles(sourceDir)) {
       const map = (await Bun.file(join(sourceDir, rel)).json()) as Record<
@@ -80,27 +124,26 @@ export async function prepareLocaleData(
       const kept = Object.fromEntries(
         Object.entries(map).filter(([, value]) => value),
       );
-      if (Object.keys(kept).length === 0) {
+      const keptCount = Object.keys(kept).length;
+      untranslated += Object.keys(map).length - keptCount;
+      if (keptCount === 0) {
         continue;
       }
 
-      // 模板占位数量对不上会漏替换，点出来。
-      const placeholderCount = (text: string): number =>
-        new Set([...text.matchAll(/\$\{[^}]*\}/g)].map(match => match[0])).size;
+      // 模板占位结构对不上会漏替换/错位，点出来。
       const mismatch: string[] = [];
       for (const [key, value] of Object.entries(kept) as [string, string][]) {
-        if (!key.includes('${')) {
+        if (!key.includes('${') && !/\{[0-9]+\}/.test(key)) {
           continue;
         }
-        const need = placeholderCount(key);
-        const got = placeholderCount(value);
-        if (need !== got) {
-          mismatch.push(`${JSON.stringify(key)}（${need} → ${got}）`);
+        const detail = placeholderMismatch(key, value);
+        if (detail) {
+          mismatch.push(`${JSON.stringify(key)}（${detail}）`);
         }
       }
       if (mismatch.length) {
-        console.warn(
-          `警告：${rel} 有 ${mismatch.length} 条模板占位数量不一致，切换语言时会漏替换：${mismatch
+        throw new Error(
+          `${rel} 有 ${mismatch.length} 条模板占位结构不一致，切换语言时会漏替换：${mismatch
             .slice(0, 3)
             .join('、')}`,
         );
@@ -116,6 +159,10 @@ export async function prepareLocaleData(
         'utf8',
       );
       list.push(out);
+    }
+
+    if (untranslated > 0) {
+      console.log(`[i18n] ${id}: 未翻译 ${untranslated} 条，将回退原文`);
     }
 
     shipped[id] = list;
