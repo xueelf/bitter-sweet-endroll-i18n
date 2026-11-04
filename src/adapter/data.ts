@@ -11,6 +11,9 @@ import { trData } from '#/core/translate';
 /** 防止异常深或循环引用的数据把遍历拖死。 */
 const MAX_DEPTH = 60;
 
+/** 只允许读取配置里的全大写全局名，避免 eval 拼进意外内容。 */
+const GLOBAL_NAME = /^[A-Z][A-Z0-9_]*$/;
+
 /** 记录被替换过的位置，切换语言时先按原文还原。 */
 interface Replacement {
   /** 把原文写回去。 */
@@ -19,27 +22,50 @@ interface Replacement {
 
 const replacements: Replacement[] = [];
 
+/** 本次套用中已经替换过的位置，避免同一对象被多个全局引用时二次翻译。 */
+let replaced = new WeakMap<object, Set<string | number>>();
+
 /** 按名字间接求值取顶层 const（名字来自固定常量）。 */
-function readGlobal(name: string): unknown {
+function evalGlobal(scope: { eval: typeof eval }, name: string): unknown {
+  if (!GLOBAL_NAME.test(name)) {
+    return null;
+  }
   try {
-    return (0, eval)(`typeof ${name} !== 'undefined' ? ${name} : null`);
+    return (0, scope.eval)(`typeof ${name} !== 'undefined' ? ${name} : null`);
   } catch {
     return null;
   }
 }
 
+function readGlobal(name: string): unknown {
+  return evalGlobal(globalThis, name);
+}
+
 function replace(container: object, key: string | number, value: string): void {
+  let done = replaced.get(container);
+  if (done?.has(key)) {
+    return;
+  }
+
   const translated = trData(value);
   if (translated === value) {
     return;
   }
+  if (!Reflect.set(container, key, translated)) {
+    return;
+  }
+
+  if (!done) {
+    done = new Set();
+    replaced.set(container, done);
+  }
+  done.add(key);
 
   replacements.push({
     restore: () => {
       Reflect.set(container, key, value);
     },
   });
-  Reflect.set(container, key, translated);
 }
 
 function walk(
@@ -88,6 +114,7 @@ export function revertData(): void {
     restore();
   }
   replacements.length = 0;
+  replaced = new WeakMap();
 }
 
 /** 就地替换一个数据对象里的整句，返回同一个对象。 */
@@ -97,8 +124,8 @@ export function applyToData(target: unknown): unknown {
   }
   try {
     walk(target, new Set(), 0);
-  } catch {
-    /* 数据里有奇怪的结构时跳过，不影响游戏启动 */
+  } catch (error) {
+    console.warn('[BSE i18n] 数据替换失败', error);
   }
   return target;
 }
@@ -130,15 +157,9 @@ export function patchFrameData(frame: HTMLIFrameElement): void {
     CHARS_GLOBAL,
     ...FRAME_DATA_GLOBALS,
   ]) {
-    try {
-      const ref = (0, win.eval)(
-        `typeof ${name} !== 'undefined' ? ${name} : null`,
-      );
-      if (ref) {
-        applyToData(ref);
-      }
-    } catch {
-      /* 还没加载完或跨域，忽略 */
+    const ref = evalGlobal(win, name);
+    if (ref) {
+      applyToData(ref);
     }
   }
 }
