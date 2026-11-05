@@ -82,6 +82,24 @@ function runtimeShape(text: string): string[] {
   );
 }
 
+/** 数据模板里的命名占位（如 {cost}、{reward}）：按名字回填，顺序可换。 */
+const NAMED_PLACEHOLDER = /\{[A-Za-z_$][\w$]*\}/g;
+
+function namedShape(text: string): string[] {
+  const stripped = text.replace(/\$\{[^}]*\}/g, '');
+  return [...stripped.matchAll(NAMED_PLACEHOLDER)]
+    .map(match => match[0])
+    .sort();
+}
+
+function hasTemplatePlaceholder(text: string): boolean {
+  return (
+    text.includes('${') ||
+    /\{[0-9]+\}/.test(text) ||
+    namedShape(text).length > 0
+  );
+}
+
 /** 返回占位结构差异，结构一致时返回 null。 */
 function placeholderMismatch(key: string, value: string): string | null {
   const need = placeholderShape(key);
@@ -97,6 +115,12 @@ function placeholderMismatch(key: string, value: string): string | null {
   const gotRuntime = runtimeShape(value);
   if (needRuntime.join() !== gotRuntime.join()) {
     return `${needRuntime.join('')} → ${gotRuntime.join('')}`;
+  }
+
+  const needNamed = namedShape(key);
+  const gotNamed = namedShape(value);
+  if (needNamed.join() !== gotNamed.join()) {
+    return `${needNamed.join('')} → ${gotNamed.join('')}`;
   }
 
   return null;
@@ -133,7 +157,7 @@ export async function prepareLocaleData(
       // 模板占位结构对不上会漏替换/错位，点出来。
       const mismatch: string[] = [];
       for (const [key, value] of Object.entries(kept) as [string, string][]) {
-        if (!key.includes('${') && !/\{[0-9]+\}/.test(key)) {
+        if (!hasTemplatePlaceholder(key) && !hasTemplatePlaceholder(value)) {
           continue;
         }
         const detail = placeholderMismatch(key, value);
@@ -162,7 +186,7 @@ export async function prepareLocaleData(
     }
 
     if (untranslated > 0) {
-      console.log(`[i18n] ${id}: 未翻译 ${untranslated} 条，将回退原文`);
+      console.log(`[i18n] ${id}: 未翻译 ${untranslated} 条，已从补丁中跳过`);
     }
 
     shipped[id] = list;
@@ -178,7 +202,7 @@ export async function writeLocaleIndex(
   files: Record<string, string[]>,
 ): Promise<void> {
   const source = [
-    '/* 自动生成，请勿手改：由 scripts/build.ts 汇总各语言的 meta.js 得到 */',
+    '/* 自动生成，请勿手改：由 scripts/build.ts 汇总各语言的 index.js 得到 */',
     '(function () {',
     '  "use strict";',
     '',

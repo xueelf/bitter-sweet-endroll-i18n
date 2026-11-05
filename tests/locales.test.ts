@@ -57,4 +57,33 @@ describe('prepareLocaleData', () => {
   test('运行期序号占位缺失时报错', async () => {
     await expect(run({ '第{0}天': '第天' })).rejects.toThrow('占位结构不一致');
   });
+
+  test('命名占位顺序变化时通过', async () => {
+    await expect(
+      run({
+        '迷宫调查 / 体力 -{cost} / 1区格 {reward}G':
+          '1区格 {reward}G / 迷宫调查 / 体力 -{cost}',
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      run({
+        '体力 -{cost} / {reward}G': '体力 -{cost} / {reward}G',
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test('命名占位缺失时报错', async () => {
+    await expect(
+      run({ '体力 -{cost} / {reward}G': '体力 -{cost}G' }),
+    ).rejects.toThrow('占位结构不一致');
+  });
+
+  test('译文凭空多出占位时报错', async () => {
+    await expect(run({ 普通文本: '普通文本{0}' })).rejects.toThrow(
+      '占位结构不一致',
+    );
+    await expect(run({ 普通文本: '普通文本{cost}' })).rejects.toThrow(
+      '占位结构不一致',
+    );
+  });
 });

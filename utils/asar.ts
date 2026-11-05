@@ -41,6 +41,9 @@ export function findOriginalAsar(root: string): string {
   if (game) {
     const base = resolve(game);
     candidates.push(
+      // --game 可能是游戏根目录、Data 目录或 Data/resources。
+      join(base, 'Data', 'resources', 'base.asar'),
+      join(base, 'Data', 'resources', 'app.asar'),
       join(base, 'resources', 'base.asar'),
       join(base, 'resources', 'app.asar'),
       join(base, 'base.asar'),
