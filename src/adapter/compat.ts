@@ -1,4 +1,5 @@
 import { CANCEL_LABEL_PATTERN, MAP_FACILITY_ALIASES } from '#/config';
+import { trUI } from '#/core/translate';
 
 import { originalTextOf, revertTree, translateTree } from './dom';
 
@@ -31,6 +32,7 @@ export function wrapOnce<T extends (...args: never[]) => unknown>(
 export function installCompat(): void {
   installCancelAction();
   installMapButtons();
+  installUpdateControls();
   installDayLabel();
   installLocationChips();
   installLogPlaceholder();
@@ -64,9 +66,15 @@ function installDayLabel(): void {
 
 /** 顶栏地点标签：按日文原文识别设施，避免依赖译文。 */
 function installLocationChips(): void {
+  let replaying = false;
+
   document.addEventListener(
     'click',
     event => {
+      if (replaying) {
+        return;
+      }
+
       const chip = (event.target as Element | null)?.closest?.('.lch.special');
       if (!chip) {
         return;
@@ -86,12 +94,42 @@ function installLocationChips(): void {
             : kind === 'guild'
               ? window.openGuild
               : undefined;
-      if (!action) {
+
+      if (!action && !kind) {
         return;
       }
+
       event.preventDefault();
       event.stopPropagation();
-      action();
+
+      if (action) {
+        action();
+        return;
+      }
+
+      // 游戏自己的点击处理按日文牌名匹配；译文牌名会匹配失败，临时换回日文重放一次。
+      const japanese =
+        kind === 'home'
+          ? '自宅'
+          : kind === 'shop'
+            ? 'ショップ'
+            : '冒険者ギルド';
+      replaying = true;
+      try {
+        if (plate) {
+          plate.textContent = japanese;
+        }
+        chip.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          }),
+        );
+      } finally {
+        replaying = false;
+        translateTree(chip);
+      }
     },
     true,
   );
@@ -176,5 +214,38 @@ function installMapButtons(): void {
   );
   if (wrapped) {
     window.markPermanentMapButtons = wrapped;
+  }
+}
+
+/** 游戏的 updateControls 用日文文本判断「マップを更新」；译文会让判断失效。 */
+function installUpdateControls(): void {
+  const api = window as Window & {
+    updateControls?: (...args: unknown[]) => unknown;
+  };
+  const wrapped = wrapOnce(
+    api.updateControls,
+    base =>
+      (...args: unknown[]): unknown => {
+        const result = base(...args);
+        try {
+          const reset = document.getElementById('reset');
+          if (reset && reset.style.display !== 'none') {
+            const refresh = trUI('マップを更新');
+            const toMap = trUI('マップへ');
+            if (
+              reset.textContent === 'マップを更新' ||
+              reset.textContent === refresh
+            ) {
+              reset.textContent = toMap || 'マップへ';
+            }
+          }
+        } catch {
+          /* 控件还没渲染时忽略 */
+        }
+        return result;
+      },
+  );
+  if (wrapped) {
+    api.updateControls = wrapped;
   }
 }
