@@ -20,6 +20,7 @@ internal static class Program
     private static bool _force;
     private static bool _dryRun;
     private static bool _noPause;
+    private static bool _skipPause;
 
     private static string T(string key) =>
         Text.TryGetValue(key, out string? value) ? value : key;
@@ -68,6 +69,7 @@ internal static class Program
             if (options.Help)
             {
                 PrintHelp();
+                _skipPause = true;
                 return 0;
             }
 
@@ -103,7 +105,7 @@ internal static class Program
         }
         finally
         {
-            if (!_noPause && !Console.IsInputRedirected)
+            if (!_skipPause && !_noPause && !Console.IsInputRedirected)
             {
                 Console.WriteLine();
                 Console.WriteLine(T("cli.pause"));
@@ -137,12 +139,14 @@ internal static class Program
             Console.WriteLine();
             if (choice == null)
             {
+                _skipPause = true;
                 return 0;
             }
 
             string c = choice.Trim().ToLowerInvariant();
             if (c == "3")
             {
+                _skipPause = true;
                 return 0;
             }
             if (c != "1" && c != "2")

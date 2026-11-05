@@ -34,7 +34,7 @@ async function main(): Promise<void> {
       [constants.BROTLI_PARAM_SIZE_HINT]: asar.length,
     },
   });
-  const hash = createHash('sha256').update(asar).digest('hex');
+  const payloadHash = createHash('sha256').update(asar).digest('hex');
 
   const packageJson = JSON.parse(
     await readFile(join(root, 'package.json'), 'utf8'),
@@ -48,7 +48,7 @@ async function main(): Promise<void> {
   try {
     await mkdir(payloadDir, { recursive: true });
     await writeFile(join(payloadDir, 'app.asar.br'), payload);
-    await writeFile(join(payloadDir, 'app.asar.sha256'), hash);
+    await writeFile(join(payloadDir, 'app.asar.sha256'), payloadHash);
 
     console.log(
       `payload: ${(asar.length / 1048576).toFixed(1)} MB -> ${(payload.length / 1048576).toFixed(1)} MB`,
@@ -86,8 +86,11 @@ async function main(): Promise<void> {
     const outputPath = join(releaseDir, outputName);
     await copyFile(join(publishDir, outputName), outputPath);
     const info = await stat(outputPath);
+    const exeHash = createHash('sha256')
+      .update(await readFile(outputPath))
+      .digest('hex');
     console.log(
-      `release/${outputName}（${(info.size / 1048576).toFixed(1)} MB，SHA-256 ${hash.slice(0, 12)}…）`,
+      `release/${outputName}（${(info.size / 1048576).toFixed(1)} MB，SHA-256 ${exeHash.slice(0, 12)}…）`,
     );
   } finally {
     await rm(workDir, { recursive: true, force: true });
