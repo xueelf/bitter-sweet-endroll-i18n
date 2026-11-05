@@ -76,6 +76,33 @@ describe('patchPreload', () => {
     }
   });
 
+  test('启动文案里的美元符号不会被替换成捕获组', async () => {
+    const { appDir, overlayDir, root } = fixture();
+    try {
+      await patchPreload(
+        appDir,
+        [
+          {
+            id: 'zh',
+            label: '中文',
+            messages: { startup: '启动 $& $1' },
+          },
+        ],
+        overlayDir,
+      );
+
+      const patched = readFileSync(
+        join(appDir, 'electron-preload.cjs'),
+        'utf8',
+      );
+      expect(patched).toContain(
+        'const BSE_LOCALES = {"zh":{"startup":"启动 $& $1"}};',
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test('找不到启动遮罩时抛错', async () => {
     const { appDir, overlayDir, root } = fixture();
     try {

@@ -34,9 +34,11 @@ export async function patchPreload(
   const extra = (
     await readFile(join(overlayDir, 'electron-preload-patch.js'), 'utf8')
   )
-    .replaceAll('__LOCALES_JSON__', JSON.stringify(meta))
-    .replaceAll('__LOCALE_STORAGE_KEY__', JSON.stringify(LOCALE_STORAGE_KEY))
-    .replaceAll('__DEFAULT_LOCALE__', JSON.stringify(DEFAULT_LOCALE));
+    .replaceAll('__LOCALES_JSON__', () => JSON.stringify(meta))
+    .replaceAll('__LOCALE_STORAGE_KEY__', () =>
+      JSON.stringify(LOCALE_STORAGE_KEY),
+    )
+    .replaceAll('__DEFAULT_LOCALE__', () => JSON.stringify(DEFAULT_LOCALE));
 
   const defaultStartup = JSON.stringify(DEFAULT_MESSAGES.startup);
 
