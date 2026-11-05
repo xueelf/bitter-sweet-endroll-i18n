@@ -49,6 +49,41 @@ describe('catalog', () => {
     );
   });
 
+  test('运行期序号占位也会被当成模板', () => {
+    catalog.mergeMap('test-runtime-template', {
+      '{1}の固定報酬を永続的に +{0}': '使{1}的固定报酬永久 +{0}',
+    });
+    expect(catalog.mapFor('test-runtime-template')).toEqual({});
+    const [pattern] = catalog.patternsFor('test-runtime-template');
+    expect(
+      '雑用の固定報酬を永続的に +5'.replace(pattern!.re, pattern!.to),
+    ).toBe('使雑用的固定报酬永久 +5');
+  });
+
+  test('跨行模板也能匹配', () => {
+    catalog.mergeMap('test-multiline', {
+      '${name}|\nおはよう': '${n}|\n早上好',
+    });
+    const [pattern] = catalog.patternsFor('test-multiline');
+    expect('艾玛|\nおはよう'.replace(pattern!.re, pattern!.to)).toBe(
+      '艾玛|\n早上好',
+    );
+  });
+
+  test('更具体的模板优先于宽泛模板', () => {
+    catalog.mergeMap('test-specificity', {
+      '使用すると{1}を{0}': '使用后可使{1}{0}',
+      '使用すると{1}を{0}段階': '使用后可使{1}{0}阶段',
+    });
+    const patterns = catalog.patternsFor('test-specificity');
+    expect(
+      '使用するとエッチ慣れ段階を3段階'.replace(
+        patterns[0]!.re,
+        patterns[0]!.to,
+      ),
+    ).toBe('使用后可使エッチ慣れ段階3阶段');
+  });
+
   test('重复出现的占位用反向引用，两次取值必须相同', () => {
     catalog.mergeMap('test-dup', { '${x}と${x}': '${a}与${a}' });
     const [pattern] = catalog.patternsFor('test-dup');

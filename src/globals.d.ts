@@ -16,6 +16,8 @@ export interface BseI18nApi {
   setLocale: (code: string) => void;
   /** 界面层查表。 */
   t: (text: string) => string;
+  /** 当前会话里没命中 KV、回退过原文的文本。 */
+  missing: () => string[];
 }
 
 declare global {
@@ -36,6 +38,8 @@ declare global {
     openOpts?: (...args: unknown[]) => unknown;
     /** 游戏：把日期补进顶栏。 */
     addDayToTop?: (...args: unknown[]) => unknown;
+    /** 游戏：刷新地图/场景控件。 */
+    updateControls?: (...args: unknown[]) => unknown;
     /** 游戏：打开自家/商店/冒险者公会面板。 */
     openHome?: () => void;
     openShop?: () => void;

@@ -3,10 +3,15 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
 import { installCompat } from '#/adapter/compat';
+import { applyToData, revertData } from '#/adapter/data';
 import { originalTextOf, startObserver, translateTree } from '#/adapter/dom';
 import { CANCEL_LABEL_PATTERN } from '#/config';
 import * as catalog from '#/core/catalog';
 import { setLocale } from '#/core/locale';
+import {
+  clearMissingTranslations,
+  missingTranslations,
+} from '#/core/translate';
 
 function useDom(): Window {
   const window = new Window();
@@ -17,6 +22,7 @@ function useDom(): Window {
   global.NodeFilter = window.NodeFilter;
   global.MutationObserver = window.MutationObserver;
   global.Element = window.Element;
+  global.MouseEvent = window.MouseEvent;
   return window;
 }
 
@@ -139,6 +145,92 @@ describe('real DOM', () => {
     expect(span.innerHTML).toBe('体力を <b>20</b> 消費しました');
   });
 
+  test('刷新地图按钮切回时用译文替换', () => {
+    useDom();
+    catalog.registerLocales([
+      { id: 'test-real-update-controls', label: '测试' },
+    ]);
+    catalog.mergeMap('test-real-update-controls', {
+      マップを更新: '刷新地图',
+      マップへ: '前往地图',
+    });
+    setLocale('test-real-update-controls');
+
+    const win = window as unknown as Record<string, unknown>;
+    win.updateControls = () => {
+      const reset = document.getElementById('reset');
+      if (reset) {
+        reset.style.display = '';
+        reset.textContent = 'マップを更新';
+      }
+    };
+    installCompat();
+
+    document.body.innerHTML = '<button id="reset"></button>';
+    (win.updateControls as () => void)();
+
+    expect(document.getElementById('reset')!.textContent).toBe('前往地图');
+  });
+
+  test('地图设施译文点击后重放游戏原本的自宅处理', () => {
+    useDom();
+    catalog.registerLocales([
+      { id: 'test-real-facility-replay', label: '测试' },
+    ]);
+    catalog.mergeMap('test-real-facility-replay', { 自宅: '住处' });
+    setLocale('test-real-facility-replay');
+
+    let opened = 0;
+    document.addEventListener(
+      'click',
+      event => {
+        const chip = (event.target as Element | null)?.closest?.(
+          '.lch.special',
+        );
+        if (!chip) {
+          return;
+        }
+        const plate = chip.querySelector('.plate');
+        if (String(plate?.textContent ?? '').includes('自宅')) {
+          opened += 1;
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      },
+      true,
+    );
+    installCompat();
+
+    document.body.innerHTML =
+      '<button class="lch special"><span class="plate">◆自宅</span></button>';
+    translateTree(document.body);
+    const chip = document.querySelector('.lch.special')!;
+    expect(chip.querySelector('.plate')!.textContent).toBe('◆住处');
+
+    chip.dispatchEvent(
+      new window.MouseEvent('click', { bubbles: true, cancelable: true }),
+    );
+    expect(opened).toBe(1);
+  });
+
+  test('内置编辑器子树不翻译也不记录 missing', () => {
+    useDom();
+    catalog.registerLocales([{ id: 'test-real-editor', label: '测试' }]);
+    setLocale('test-real-editor');
+    clearMissingTranslations();
+
+    document.body.innerHTML =
+      '<div id="settings"><button>JSON書出</button><p>場面用立ち絵画像</p></div>';
+    translateTree(document.body);
+
+    expect(document.querySelector('#settings button')!.textContent).toBe(
+      'JSON書出',
+    );
+    expect(missingTranslations()).toEqual([]);
+
+    clearMissingTranslations();
+  });
+
   test('兼容层读取取消按钮的日文原文', () => {
     useDom();
     catalog.registerLocales([{ id: 'test-real-cancel', label: '测试' }]);
@@ -230,6 +322,68 @@ describe('real DOM', () => {
     translateTree(document.body);
     expect(() => (win.addDayToTop as () => void)()).toThrow('boom');
     expect(document.getElementById('top')!.textContent).toBe('地图｜早上');
+  });
+
+  test('数据层先翻译再渲染的文本，切回日文时还原', () => {
+    useDom();
+    catalog.registerLocales([{ id: 'test-real-data-switch', label: '测试' }]);
+    catalog.mergeMap('test-real-data-switch', {
+      'ギルドの依頼を選びます。': '请选择公会委托。',
+      'ダンジョン調査 / 体力 -{cost} / 1区画 {reward}G{boostText}':
+        '迷宫调查 / 体力 -{cost} / 1区格 {reward}G{boostText}',
+    });
+    setLocale('test-real-data-switch');
+
+    const data = {
+      note: 'ギルドの依頼を選びます。',
+      line: 'ダンジョン調査 / 体力 -{cost} / 1区画 {reward}G{boostText}',
+    };
+    applyToData(data);
+    document.body.innerHTML =
+      `<p id="note">${data.note}</p>` +
+      `<p id="line">${data.line
+        .replaceAll('{cost}', '20')
+        .replaceAll('{reward}', '15')
+        .replaceAll('{boostText}', ' / 仕事量x2')}</p>`;
+    translateTree(document.body);
+
+    const note = document.getElementById('note')!;
+    const line = document.getElementById('line')!;
+    expect(note.textContent).toBe('请选择公会委托。');
+    expect(line.textContent).toBe('迷宫调查 / 体力 -20 / 1区格 15G / 仕事量x2');
+    expect(originalTextOf(note)).toBe('ギルドの依頼を選びます。');
+
+    setLocale('ja');
+    translateTree(document.body);
+    expect(note.textContent).toBe('ギルドの依頼を選びます。');
+    expect(line.textContent).toBe(
+      'ダンジョン調査 / 体力 -20 / 1区画 15G / 仕事量x2',
+    );
+
+    setLocale('test-real-data-switch');
+    translateTree(document.body);
+    expect(note.textContent).toBe('请选择公会委托。');
+    expect(line.textContent).toBe('迷宫调查 / 体力 -20 / 1区格 15G / 仕事量x2');
+
+    // 日文状态下重新渲染出来的填充串，也要能切回中文。
+    setLocale('ja');
+    document.body.innerHTML =
+      '<p id="note">ギルドの依頼を選びます。</p>' +
+      '<p id="line">ダンジョン調査 / 体力 -20 / 1区画 15G / 仕事量x2</p>';
+    translateTree(document.body);
+    expect(document.getElementById('note')!.textContent).toBe(
+      'ギルドの依頼を選びます。',
+    );
+    setLocale('test-real-data-switch');
+    translateTree(document.body);
+    expect(document.getElementById('note')!.textContent).toBe(
+      '请选择公会委托。',
+    );
+    expect(document.getElementById('line')!.textContent).toBe(
+      '迷宫调查 / 体力 -20 / 1区格 15G / 仕事量x2',
+    );
+
+    revertData();
   });
 
   test('观察器能接住游戏对已有文本节点的更新', async () => {

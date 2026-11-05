@@ -6,7 +6,7 @@ import {
   SKIP_KEY_PATTERN,
 } from '#/config';
 import { map } from '#/core/locale';
-import { trData } from '#/core/translate';
+import { rememberDataTranslation, trData } from '#/core/translate';
 
 /** 防止异常深或循环引用的数据把遍历拖死。 */
 const MAX_DEPTH = 60;
@@ -54,6 +54,8 @@ function replace(container: object, key: string | number, value: string): void {
   if (!Reflect.set(container, key, translated)) {
     return;
   }
+
+  rememberDataTranslation(value, translated);
 
   if (!done) {
     done = new Set();

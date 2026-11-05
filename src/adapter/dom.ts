@@ -1,4 +1,4 @@
-import { trHTML, trUI } from '#/core/translate';
+import { sourceText, trHTML, trUI } from '#/core/translate';
 
 import { patchFrameData } from './data';
 
@@ -11,6 +11,9 @@ const SKIP_TAGS = new Set([
   'CODE',
   'PRE',
 ]);
+
+/** 内置资源编辑器在正式版隐藏，不翻译也不计入 missing。 */
+const SKIP_SELECTOR = '[data-bse-no-i18n], #settings, body > header';
 
 /** 需要顺带翻译的属性。 */
 const TRANSLATED_ATTRS = ['title', 'placeholder', 'aria-label'];
@@ -36,7 +39,7 @@ const htmlOutputs = new WeakMap<Element, string>();
 function originalText(node: Text): string {
   let original = textOriginals.get(node);
   if (original === undefined) {
-    original = node.nodeValue ?? '';
+    original = sourceText(node.nodeValue ?? '');
     textOriginals.set(node, original);
   }
   return original;
@@ -55,7 +58,7 @@ function skipElement(element: Element | null): boolean {
   // 标记在容器上时，整棵子树都跳过。
   return (
     typeof element.closest === 'function' &&
-    element.closest('[data-bse-no-i18n]') !== null
+    element.closest(SKIP_SELECTOR) !== null
   );
 }
 
@@ -117,7 +120,7 @@ function translateAttributes(element: Element): void {
       attrOriginals.set(element, saved);
     }
     if (!saved.has(name)) {
-      saved.set(name, current);
+      saved.set(name, sourceText(current));
     }
 
     const original = saved.get(name)!;
@@ -166,11 +169,11 @@ export function translateInlineHtml(element: Element): boolean {
   const last = htmlOutputs.get(element);
   if (last !== undefined && current !== last) {
     // 游戏改写了容器内容，当前内容才是新的原文。
-    htmlOriginals.set(element, current);
+    htmlOriginals.set(element, sourceText(current));
   }
   let original = htmlOriginals.get(element);
   if (original === undefined) {
-    original = current;
+    original = sourceText(current);
     htmlOriginals.set(element, original);
   }
 
@@ -224,7 +227,7 @@ export function translateTree(root: Node | null): void {
 export function originalTextOf(element: Element): string {
   let out = '';
   eachTextNode(element, node => {
-    out += textOriginals.get(node) ?? node.nodeValue ?? '';
+    out += textOriginals.get(node) ?? sourceText(node.nodeValue ?? '');
   });
   return out;
 }
@@ -235,8 +238,9 @@ export function revertTree(root: Node | null): void {
     return;
   }
   eachTextNode(root, node => {
-    const original = textOriginals.get(node);
-    if (original !== undefined && node.nodeValue !== original) {
+    const current = node.nodeValue ?? '';
+    const original = textOriginals.get(node) ?? sourceText(current);
+    if (current !== original) {
       node.nodeValue = original;
       textOutputs.set(node, original);
     }
@@ -253,7 +257,7 @@ export function applyMutation(mutation: MutationRecord): void {
     if (textOutputs.get(node) === node.nodeValue) {
       return;
     }
-    textOriginals.set(node, node.nodeValue ?? '');
+    textOriginals.set(node, sourceText(node.nodeValue ?? ''));
     textOutputs.delete(node);
     translateTextNode(node);
     return;
@@ -286,7 +290,7 @@ export function applyMutation(mutation: MutationRecord): void {
     originals = new Map();
     attrOriginals.set(element, originals);
   }
-  originals.set(name, current);
+  originals.set(name, sourceText(current));
   attrOutputs.get(element)?.delete(name);
   translateAttributes(element);
 }

@@ -3,7 +3,7 @@ import { patchGameData } from './adapter/data';
 import { refreshDom, startObserver } from './adapter/dom';
 import * as catalog from './core/catalog';
 import * as locale from './core/locale';
-import { trUI } from './core/translate';
+import { missingTranslations, sourceText, trUI } from './core/translate';
 import {
   ensureLanguageRowInModal,
   syncLanguageRow,
@@ -38,7 +38,7 @@ function bootDom(): void {
   // 先替换再刷新，遮罩撤掉前不会闪出原文。
   patchGameData();
 
-  originalTitle = document.title;
+  originalTitle = sourceText(document.title);
   try {
     document.title = trUI(originalTitle) || originalTitle;
   } catch {
@@ -79,4 +79,5 @@ window.BSE_I18N = {
   boot,
   setLocale: code => locale.setLocale(code),
   t: trUI,
+  missing: () => missingTranslations(),
 };

@@ -201,7 +201,10 @@ function createMainWindow() {
     const testZh = !!process.env.BSE_OVERLAY_TESTZH;
     let step = 0;
     const probe = "[location.href, document.title, !!window.__GAME_DATA__, typeof window.BSE_I18N, " +
-      "window.BSE_I18N && window.BSE_I18N.locale, !!window.__BSE_I18N_APPLIED__, " +
+      "window.BSE_I18N && window.BSE_I18N.locale, " +
+      "(window.BSE_I18N && window.BSE_I18N.missing ? window.BSE_I18N.missing().length : -1), " +
+      "(window.BSE_I18N && window.BSE_I18N.missing ? JSON.stringify(window.BSE_I18N.missing()) : '[]'), " +
+      "!!window.__BSE_I18N_APPLIED__, " +
       "(document.querySelector('base') || {}).href, " +
       "((window.BSE_I18N && window.BSE_I18N.locales() || []).map(function(l){return l.id + '=' + l.label;}).join(',')), " +
       "(window.__GAME_DATA__ && window.__GAME_DATA__.characters && window.__GAME_DATA__.characters[0].encounter.title), " +

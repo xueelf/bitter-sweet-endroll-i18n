@@ -35,6 +35,8 @@ export interface LocaleInfo {
 export interface CompiledTemplate {
   re: RegExp;
   to: string;
+  /** 占位之外的固定文字长度，用于让更具体的模板先匹配。 */
+  specificity: number;
 }
 
 interface Slot {
@@ -83,17 +85,40 @@ function sameRecord<T extends object>(a: T | null, b: T): boolean {
 }
 
 function rebuildPatterns(slot: Slot): void {
-  slot.patterns = [...slot.templates, ...slot.mapPatterns.values()];
+  const mapPatterns = [...slot.mapPatterns.values()].sort(
+    (a, b) => b.specificity - a.specificity,
+  );
+  slot.patterns = [...slot.templates, ...mapPatterns];
 }
 
-/** 词条或模板里的 ${...} 占位，整段作为占位名。 */
-const PLACEHOLDER = /\$\{[^}]*\}/g;
+/** 词条或模板里的占位：${...} 与游戏运行期回填的 {0}/{1}。 */
+const PLACEHOLDER = /\$\{[^}]*\}|\{\d+\}/g;
+const HAS_PLACEHOLDER = /\$\{[^}]*\}|\{\d+\}/;
 
 const escapeRegExp = (text: string): string =>
   text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** 译文里的字面 $ 要转义，否则 String.replace 会把它当成捕获引用。 */
 const escapeReplacement = (text: string): string => text.replace(/\$/g, '$$$$');
+
+/** 表达式里的字面量：条件分支里的「上限なし」「購入済み」等。 */
+function placeholderPattern(expression: string): string {
+  const literals = [
+    ...expression.matchAll(/"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'/g),
+  ]
+    .map(match =>
+      (match[1] ?? match[2] ?? '')
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, "'")
+        .replace(/\\\\/g, '\\'),
+    )
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  const alternatives = literals.map(escapeRegExp);
+  alternatives.push('[\\s\\S]*?');
+  return `((?:${alternatives.join('|')}))`;
+}
 
 /** 把 from/to 编译成整串正则：from 的占位依次成捕获组，to 按占位顺序回填。 */
 function compileTemplate(from: string, to: string): CompiledTemplate | null {
@@ -106,7 +131,8 @@ function compileTemplate(from: string, to: string): CompiledTemplate | null {
     const index = names.indexOf(match[0]);
     if (index < 0) {
       names.push(match[0]);
-      source += '(.+?)';
+      const expression = match[0].startsWith('${') ? match[0].slice(2, -1) : '';
+      source += expression ? placeholderPattern(expression) : '([\\s\\S]*?)';
     } else {
       source += `\\${index + 1}`;
     }
@@ -119,13 +145,14 @@ function compileTemplate(from: string, to: string): CompiledTemplate | null {
   }
 
   // 占位符之外没有实义文字的模板是恒等替换，只会挡住后面的模板，直接拒绝。
-  if (!from.replace(PLACEHOLDER, '').trim()) {
+  const literal = from.replace(PLACEHOLDER, '');
+  if (!literal.trim()) {
     return null;
   }
 
   const targets = [...to.matchAll(PLACEHOLDER)].map(match => match[0]);
   const replacement = to
-    .split(/(\$\{[^}]*\})/)
+    .split(/(\$\{[^}]*\}|\{\d+\})/)
     .map((part, index) => {
       if (index % 2 === 1) {
         const target = targets.indexOf(part);
@@ -137,7 +164,11 @@ function compileTemplate(from: string, to: string): CompiledTemplate | null {
     })
     .join('');
 
-  return { re: new RegExp(`^${source}$`), to: replacement };
+  return {
+    re: new RegExp(`^${source}$`),
+    to: replacement,
+    specificity: literal.length,
+  };
 }
 
 function compileTemplates(templates: readonly Template[]): CompiledTemplate[] {
@@ -151,8 +182,8 @@ function compileTemplates(templates: readonly Template[]): CompiledTemplate[] {
   return compiled;
 }
 
-/** 含 ${...} 的词条是运行期拼装串，进模板，其余进对照表。 */
-const hasPlaceholder = (text: string): boolean => /\$\{[^}]*\}/.test(text);
+/** 含占位符的词条是运行期拼装串，进模板，其余进对照表。 */
+const hasPlaceholder = (text: string): boolean => HAS_PLACEHOLDER.test(text);
 
 function slotFor(id: string): Slot {
   let slot = slots.get(id);

@@ -2,7 +2,12 @@ import { afterAll, describe, expect, test } from 'bun:test';
 
 import * as catalog from '#/core/catalog';
 import { setLocale } from '#/core/locale';
-import { trHTML, trUI } from '#/core/translate';
+import {
+  clearMissingTranslations,
+  missingTranslations,
+  trHTML,
+  trUI,
+} from '#/core/translate';
 
 describe('translate', () => {
   test('体力提示按纯文本模板翻译', () => {
@@ -91,6 +96,149 @@ describe('translate', () => {
     expect(trUI('未読')).toBe('未读');
     expect(trUI('未読設定')).toBe('未読設定');
     expect(trUI('手動で')).toBe('手动地');
+  });
+
+  test('手工片段能补全含平假名的 UI 标签', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-fragment-ui',
+        label: '测试',
+        fragments: {
+          体力: '体力',
+          報酬: '报酬',
+          上限なし: '无上限',
+          鉱石キャッチ: '矿石捕捉',
+          獲得G: '获得G',
+        },
+      },
+    ]);
+    setLocale('test-fragment-ui');
+
+    expect(trUI('鉱石キャッチ / 体力 -20 / 報酬 上限なし')).toBe(
+      '矿石捕捉 / 体力 -20 / 报酬 无上限',
+    );
+    expect(trUI('獲得G x1.5')).toBe('获得G x1.5');
+  });
+
+  test('住所休息说明的 <b> 体力值模板能翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-rest-html',
+        label: '测试',
+        templates: [
+          {
+            from: '翌朝まで眠る ／ 体力 <b>+${n}</b>',
+            to: '睡到第二天早上 ／ 体力 <b>+${n}</b>',
+          },
+        ],
+      },
+    ]);
+    setLocale('test-rest-html');
+
+    expect(trHTML('翌朝まで眠る ／ 体力 <b>+125</b>')).toBe(
+      '睡到第二天早上 ／ 体力 <b>+125</b>',
+    );
+  });
+
+  test('角色名 + 亲密度槽用模板翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-affinity-gauge',
+        label: '测试',
+        templates: [
+          { from: '${name} 好感度 ${n}', to: '${name} 好感度 ${n}' },
+          { from: '${name} 親密度 ${n}', to: '${name} 亲密度 ${n}' },
+        ],
+      },
+    ]);
+    setLocale('test-affinity-gauge');
+
+    expect(trUI('艾玛 好感度 30')).toBe('艾玛 好感度 30');
+    expect(trUI('艾玛 親密度 30')).toBe('艾玛 亲密度 30');
+  });
+
+  test('运行时槽位标签用 KV 短语翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-runtime-gauge',
+        label: '测试',
+        fragments: { 逃走ゲージ: '逃跑槽' },
+      },
+    ]);
+    setLocale('test-runtime-gauge');
+
+    expect(trUI('逃走ゲージ')).toBe('逃跑槽');
+  });
+
+  test('运行期序号占位的数据模板能翻译填值后的串', () => {
+    catalog.registerLocales([{ id: 'test-runtime-data', label: '测试' }]);
+    catalog.mergeMap('test-runtime-data', {
+      '{1}の固定報酬を永続的に +{0}': '使{1}的固定报酬永久 +{0}',
+    });
+    setLocale('test-runtime-data');
+
+    expect(trUI('雑用の固定報酬を永続的に +5')).toBe('使雑用的固定报酬永久 +5');
+  });
+
+  test('模板译文里的字面美元符号原样保留', () => {
+    catalog.registerLocales([{ id: 'test-template-dollar', label: '测试' }]);
+    catalog.mergeMap('test-template-dollar', {
+      '価格${n}': '价格 $${a}',
+    });
+    setLocale('test-template-dollar');
+
+    expect(trUI('価格100')).toBe('价格 $100');
+  });
+
+  test('模板拆开完整短语时用 KV 短语补全', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-template-fragment',
+        label: '测试',
+        fragments: {
+          鉱石キャッチ: '矿石捕捉',
+          体力: '体力',
+          報酬: '报酬',
+          上限なし: '无上限',
+        },
+      },
+    ]);
+    catalog.mergeMap('test-template-fragment', {
+      '鉱石キャッチ / 体力 -${cost} / 報酬 ${reward}${suffix}':
+        '矿石捕捉 / 体力 -${a} / 报酬 ${b}${c}',
+    });
+    setLocale('test-template-fragment');
+
+    expect(trUI('鉱石キャッチ / 体力 -20 / 報酬 上限なし')).toBe(
+      '矿石捕捉 / 体力 -20 / 报酬 无上限',
+    );
+  });
+
+  test('未命中的日文会记录，命中不会', () => {
+    catalog.registerLocales([{ id: 'test-missing', label: '测试' }]);
+    catalog.mergeMap('test-missing', { 設定: '设置' });
+    setLocale('test-missing');
+    clearMissingTranslations();
+
+    expect(trUI('設定')).toBe('设置');
+    expect(trUI('未登録')).toBe('未登録');
+    expect(missingTranslations()).toContain('未登録');
+    expect(missingTranslations()).not.toContain('設定');
+
+    clearMissingTranslations();
+  });
+
+  test('模板占位里的日文值也会翻译', () => {
+    catalog.registerLocales([{ id: 'test-capture', label: '测试' }]);
+    catalog.mergeMap('test-capture', {
+      '使用すると{1}を{0}段階': '使用后可使{1}提升{0}阶段',
+      エッチ慣れ段階: '亲热熟练阶段',
+    });
+    setLocale('test-capture');
+
+    expect(trUI('使用するとエッチ慣れ段階を3段階')).toBe(
+      '使用后可使亲热熟练阶段提升3阶段',
+    );
   });
 });
 
