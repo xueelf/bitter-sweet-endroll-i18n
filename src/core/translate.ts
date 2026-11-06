@@ -1,6 +1,6 @@
 import { catalogRevision, fragmentsFor, patternsFor } from './catalog';
 import { id as currentId, isDefault, map, protectedStrings } from './locale';
-import { JAPANESE_PATTERN, PATH_PATTERN } from './text';
+import { JAPANESE_PATTERN, PATH_PATTERN, stripDeveloperNotes } from './text';
 
 function isJapanese(text: string): boolean {
   return JAPANESE_PATTERN.test(text);
@@ -41,14 +41,6 @@ function recordMissing(text: string): void {
     return;
   }
   missing.add(text);
-}
-
-/** 游戏数据里夹带的作者备注块（### + # 101-125 / ... + ###），显示前去掉。 */
-const DEVELOPER_NOTE_BLOCK =
-  /(?:^|\n)#{20,}\r?\n#\s*\d+\s*[-–−ー]\s*\d+[^\n]*\r?\n#{20,}(?=\r?\n|$)/g;
-
-function stripDeveloperNotes(text: string): string {
-  return text.replace(DEVELOPER_NOTE_BLOCK, '');
 }
 
 /** 当前会话里回退过原文的文本。 */
@@ -442,19 +434,20 @@ function trDataInternal(text: string): string {
   if (!text) {
     return text;
   }
-  if (isDefault() || protectedStrings().has(text)) {
-    return text;
+  const source = stripDeveloperNotes(text);
+  if (isDefault() || protectedStrings().has(source)) {
+    return source;
   }
-  if (!isJapanese(text) || looksLikePath(text)) {
-    return text;
+  if (!isJapanese(source) || looksLikePath(source)) {
+    return source;
   }
 
-  const translated = lookup(text) ?? template(text);
+  const translated = lookup(source) ?? template(source);
   if (translated) {
     return translated;
   }
-  recordMissing(text);
-  return text;
+  recordMissing(source);
+  return source;
 }
 
 export function trData(text: string): string {
@@ -467,18 +460,19 @@ function trUIInternal(text: string): string {
     return text;
   }
 
+  const clean = stripDeveloperNotes(text);
   if (isDefault()) {
-    return sourceText(text);
+    return sourceText(clean);
   }
 
   // 当前语言能直接命中的 KV/模板优先，避免把已翻译的串再反查成日文。
-  const direct = lookup(text) ?? template(text) ?? decorated(text);
+  const direct = lookup(clean) ?? template(clean) ?? decorated(clean);
   if (direct !== null) {
     return direct;
   }
 
   // 数据层先翻译、游戏再渲染时，DOM 里抓到的是译文；切回原文要先反查。
-  const source = sourceText(text);
+  const source = sourceText(clean);
   // 数据模板已经填过值时，整串查表命中不了，按占位符重新套当前语言。
   const localized = dataTranslated(source) ?? source;
 
@@ -520,16 +514,17 @@ function trHTMLInternal(html: string): string {
     return html;
   }
 
+  const clean = stripDeveloperNotes(html);
   if (isDefault()) {
-    return sourceText(html);
+    return sourceText(clean);
   }
 
-  const direct = lookup(html) ?? template(html);
+  const direct = lookup(clean) ?? template(clean);
   if (direct !== null) {
     return direct;
   }
 
-  const source = sourceText(html);
+  const source = sourceText(clean);
   const localized = dataTranslated(source) ?? source;
   const translated = lookup(localized) ?? template(localized);
   if (translated !== null) {

@@ -60,6 +60,19 @@ var c = ' title="上へ">↑ 上へ';
     expect(fromGameData(file)).toEqual(['設定']);
   });
 
+  test('GameData 里的开发备注块不会进入词条', () => {
+    const note = [
+      '############################################################',
+      '# 101-125 ／ 备注',
+      '############################################################',
+    ].join('\n');
+    const data = { text: `正文。\n${note}` };
+    const file = join(dir, 'GameDataNote.js');
+    writeFileSync(file, `window.__GAME_DATA__ = ${JSON.stringify(data)};`);
+
+    expect(fromGameData(file)).toEqual(['正文。']);
+  });
+
   test('GameData 遍历跳过 music[].name（曲名不翻译）', () => {
     const data = {
       characters: [

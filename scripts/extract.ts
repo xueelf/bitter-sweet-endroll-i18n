@@ -10,7 +10,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 
 import { MUSIC_LIST_KEY, SKIP_KEY_PATTERN } from '#/config';
-import { JAPANESE_PATTERN, PATH_PATTERN } from '#/core/text';
+import {
+  JAPANESE_PATTERN,
+  PATH_PATTERN,
+  stripDeveloperNotes,
+} from '#/core/text';
 import { extractEntry, findOriginalAsar, parseGameArg } from '~/utils/asar';
 
 /** 语言代码，与 locales/<id>/ 对应。 */
@@ -65,11 +69,12 @@ function isText(value: string): boolean {
 }
 
 function push(out: string[], seen: Set<string>, value: string): void {
-  if (!isText(value) || seen.has(value)) {
+  const cleaned = stripDeveloperNotes(value);
+  if (!isText(cleaned) || seen.has(cleaned)) {
     return;
   }
-  seen.add(value);
-  out.push(value);
+  seen.add(cleaned);
+  out.push(cleaned);
 }
 
 /** 还原 JS 字符串字面量里的转义。 */
@@ -241,8 +246,13 @@ async function loadExisting(
       string | null
     >;
     for (const [key, value] of Object.entries(map)) {
-      if (value) {
-        dict[key] = value;
+      if (!value) {
+        continue;
+      }
+      dict[key] = value;
+      const cleanedKey = stripDeveloperNotes(key);
+      if (cleanedKey !== key) {
+        dict[cleanedKey] = stripDeveloperNotes(value);
       }
     }
   }
