@@ -5,6 +5,7 @@ import { setLocale } from '#/core/locale';
 import {
   clearMissingTranslations,
   missingTranslations,
+  trData,
   trHTML,
   trUI,
 } from '#/core/translate';
@@ -400,6 +401,24 @@ describe('translate', () => {
 
     expect(trUI('使用するとエッチ慣れ段階を3段階')).toBe(
       '使用后可使亲热熟练阶段提升3阶段',
+    );
+  });
+
+  test('作者备注块不会显示在正文里', () => {
+    catalog.registerLocales([{ id: 'test-developer-note', label: '测试' }]);
+    setLocale('test-developer-note');
+
+    const translated = `塔拉|[困惑]
+触碰那里的日子，既叫人害怕，又叫人盼望。……两种心情，同时都在。
+############################################################
+# 101-125 ／ 结缘之后·初次的共犯。局部接受开始段（S4）。您
+############################################################`;
+
+    expect(trUI(translated)).toBe(
+      '塔拉|[困惑]\n触碰那里的日子，既叫人害怕，又叫人盼望。……两种心情，同时都在。',
+    );
+    expect(trData(translated)).toBe(
+      '塔拉|[困惑]\n触碰那里的日子，既叫人害怕，又叫人盼望。……两种心情，同时都在。',
     );
   });
 });

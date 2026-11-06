@@ -43,6 +43,14 @@ function recordMissing(text: string): void {
   missing.add(text);
 }
 
+/** 游戏数据里夹带的作者备注块（### + # 101-125 / ... + ###），显示前去掉。 */
+const DEVELOPER_NOTE_BLOCK =
+  /(?:^|\n)#{20,}\r?\n#\s*\d+\s*[-–−ー]\s*\d+[^\n]*\r?\n#{20,}(?=\r?\n|$)/g;
+
+function stripDeveloperNotes(text: string): string {
+  return text.replace(DEVELOPER_NOTE_BLOCK, '');
+}
+
 /** 当前会话里回退过原文的文本。 */
 export function missingTranslations(): string[] {
   return [...missing].sort();
@@ -430,7 +438,7 @@ export function sourceText(text: string): string {
 }
 
 /** 数据层查表：只替换词典里存在的整句，控制串与资源路径原样返回。 */
-export function trData(text: string): string {
+function trDataInternal(text: string): string {
   if (!text) {
     return text;
   }
@@ -449,8 +457,12 @@ export function trData(text: string): string {
   return text;
 }
 
+export function trData(text: string): string {
+  return stripDeveloperNotes(trDataInternal(text));
+}
+
 /** 界面层查表：调用方负责 trim 和保留空白。 */
-export function trUI(text: string): string {
+function trUIInternal(text: string): string {
   if (!text) {
     return text;
   }
@@ -495,11 +507,15 @@ export function trUI(text: string): string {
   return localized;
 }
 
+export function trUI(text: string): string {
+  return stripDeveloperNotes(trUIInternal(text));
+}
+
 /**
  * 整段 HTML 查表：游戏会把提示拆成「文字 + <b>数字</b> + 文字」，
  * 模板里直接带标签匹配，避免逐文本节点翻译后留下日文和多余空格。
  */
-export function trHTML(html: string): string {
+function trHTMLInternal(html: string): string {
   if (!html) {
     return html;
   }
@@ -521,4 +537,8 @@ export function trHTML(html: string): string {
   }
   recordMissing(source);
   return localized;
+}
+
+export function trHTML(html: string): string {
+  return stripDeveloperNotes(trHTMLInternal(html));
 }
