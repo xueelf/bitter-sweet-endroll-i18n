@@ -17,6 +17,15 @@ export default {
       from: '翌朝まで眠る ／ 体力 <b>+${n}</b>',
       to: '睡到第二天早上 ／ 体力 <b>+${n}</b>',
     },
+    // 探索记录加成：数值由游戏拼出来。
+    {
+      from: '踏破記録ボーナス：${cells}マス × ${rate}G = +${applied}G',
+      to: '踏破记录奖励：${cells}格 × ${rate}G = +${applied}G',
+    },
+    {
+      from: '踏破記録ボーナス：${cells}マス × ${rate}G × 50% = +${applied}G',
+      to: '踏破记录奖励：${cells}格 × ${rate}G × 50% = +${applied}G',
+    },
     { from: '冒険者ランク${rank}で解放', to: '冒险者等级 ${rank} 解锁' },
     { from: '冒険者ランク${rank}で開放', to: '冒险者等级 ${rank} 解锁' },
     { from: 'スロット${slot} に保存しました', to: '已保存到槽位 ${slot}' },

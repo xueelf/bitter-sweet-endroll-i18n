@@ -4,7 +4,12 @@ import { Window } from 'happy-dom';
 
 import { installCompat } from '#/adapter/compat';
 import { applyToData, revertData } from '#/adapter/data';
-import { originalTextOf, startObserver, translateTree } from '#/adapter/dom';
+import {
+  applyLocaleCss,
+  originalTextOf,
+  startObserver,
+  translateTree,
+} from '#/adapter/dom';
 import { CANCEL_LABEL_PATTERN } from '#/config';
 import * as catalog from '#/core/catalog';
 import { setLocale } from '#/core/locale';
@@ -211,6 +216,28 @@ describe('real DOM', () => {
       new window.MouseEvent('click', { bubbles: true, cancelable: true }),
     );
     expect(opened).toBe(1);
+  });
+
+  test('CSS content 标题按当前语言切换', () => {
+    useDom();
+    catalog.registerLocales([{ id: 'test-real-css', label: '测试' }]);
+    catalog.mergeMap('test-real-css', {
+      ギルド調査依頼: '公会调查委托',
+      ギルド採取依頼: '公会采集委托',
+    });
+    setLocale('test-real-css');
+    applyLocaleCss();
+
+    expect(
+      document.documentElement.style.getPropertyValue(
+        '--bse-guild-explore-kicker',
+      ),
+    ).toBe('"公会调查委托"');
+    expect(
+      document.documentElement.style.getPropertyValue(
+        '--bse-guild-gather-kicker',
+      ),
+    ).toBe('"公会采集委托"');
   });
 
   test('内置编辑器子树不翻译也不记录 missing', () => {

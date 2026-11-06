@@ -420,8 +420,25 @@ function watchFrames(root: Node | null): void {
   }
 }
 
+/** 游戏用 CSS content 画的标题无法走 DOM 翻译，改成可切换的变量。 */
+export function applyLocaleCss(): void {
+  const root = document.documentElement;
+  if (!root) {
+    return;
+  }
+  root.style.setProperty(
+    '--bse-guild-explore-kicker',
+    JSON.stringify(trUI('ギルド調査依頼')),
+  );
+  root.style.setProperty(
+    '--bse-guild-gather-kicker',
+    JSON.stringify(trUI('ギルド採取依頼')),
+  );
+}
+
 /** 按当前语言重新翻译整个界面（含同源 iframe）。原文语言会还原成日文。 */
 export function refreshDom(): void {
+  applyLocaleCss();
   translateTree(document.body);
   watchFrames(document.body);
 }

@@ -120,6 +120,30 @@ describe('translate', () => {
     expect(trUI('獲得G x1.5')).toBe('获得G x1.5');
   });
 
+  test('踏破记录奖励模板能翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-explore-bonus',
+        label: '测试',
+        templates: [
+          {
+            from: '踏破記録ボーナス：${cells}マス × ${rate}G = +${applied}G',
+            to: '踏破记录奖励：${cells}格 × ${rate}G = +${applied}G',
+          },
+          {
+            from: '踏破記録ボーナス：${cells}マス × ${rate}G × 50% = +${applied}G',
+            to: '踏破记录奖励：${cells}格 × ${rate}G × 50% = +${applied}G',
+          },
+        ],
+      },
+    ]);
+    setLocale('test-explore-bonus');
+
+    expect(trUI('踏破記録ボーナス：202マス × 5G × 50% = +505G')).toBe(
+      '踏破记录奖励：202格 × 5G × 50% = +505G',
+    );
+  });
+
   test('住所休息说明的 <b> 体力值模板能翻译', () => {
     catalog.registerLocales([
       {
