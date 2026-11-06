@@ -194,7 +194,7 @@ describe('translate', () => {
     );
   });
 
-  test('踏破记录奖励模板能翻译', () => {
+  test('探索记录奖励模板能翻译', () => {
     catalog.registerLocales([
       {
         id: 'test-explore-bonus',
@@ -202,11 +202,11 @@ describe('translate', () => {
         templates: [
           {
             from: '踏破記録ボーナス：${cells}マス × ${rate}G = +${applied}G',
-            to: '踏破记录奖励：${cells}格 × ${rate}G = +${applied}G',
+            to: '探索记录奖励：${cells}格 × ${rate}G = +${applied}G',
           },
           {
             from: '踏破記録ボーナス：${cells}マス × ${rate}G × 50% = +${applied}G',
-            to: '踏破记录奖励：${cells}格 × ${rate}G × 50% = +${applied}G',
+            to: '探索记录奖励：${cells}格 × ${rate}G × 50% = +${applied}G',
           },
         ],
       },
@@ -214,7 +214,71 @@ describe('translate', () => {
     setLocale('test-explore-bonus');
 
     expect(trUI('踏破記録ボーナス：202マス × 5G × 50% = +505G')).toBe(
-      '踏破记录奖励：202格 × 5G × 50% = +505G',
+      '探索记录奖励：202格 × 5G × 50% = +505G',
+    );
+  });
+
+  test('商店体位说明里的体位名能翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-shop-position',
+        label: '测试',
+        templates: [
+          {
+            from: '作为重要物品持有期间，${target}可选择',
+            to: '作为重要物品持有期间，${target}可选择',
+          },
+        ],
+        fragments: {
+          放尿: '放尿',
+          コスプレ: '角色扮演',
+          種付けプレス: '播种压制',
+          アナル: '肛交',
+          口で奉仕: '口交',
+          騎乗位: '骑乘位',
+          後背位: '后背位',
+          側位: '侧位',
+        },
+      },
+    ]);
+    setLocale('test-shop-position');
+
+    expect(
+      trUI('作为重要物品持有期间，口で奉仕・騎乗位・後背位・側位可选择'),
+    ).toBe('作为重要物品持有期间，口交・骑乘位・后背位・侧位可选择');
+    expect(
+      trUI('作为重要物品持有期间，放尿・コスプレ・種付けプレス・アナル可选择'),
+    ).toBe('作为重要物品持有期间，放尿・角色扮演・播种压制・肛交可选择');
+  });
+
+  test('商店探索道具说明里的目标名能翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-shop-explore',
+        label: '测试',
+        templates: [
+          {
+            from: '${target}中获得的金币按最大探索格数×${value}提升',
+            to: '${target}中获得的金币按最大探索格数×${value}提升',
+          },
+          {
+            from: '${target}中获得的金币按已取得红紫矿石数×${value}提升',
+            to: '${target}中获得的金币按已取得红紫矿石数×${value}提升',
+          },
+        ],
+      },
+    ]);
+    catalog.mergeMap('test-shop-explore', {
+      '探索依頼・雑用': '探索委托·杂务',
+      '採取依頼・雑用': '采集委托·杂务',
+    });
+    setLocale('test-shop-explore');
+
+    expect(trUI('探索依頼・雑用中获得的金币按已取得红紫矿石数×30提升')).toBe(
+      '探索委托·杂务中获得的金币按已取得红紫矿石数×30提升',
+    );
+    expect(trUI('採取依頼・雑用中获得的金币按最大探索格数×5提升')).toBe(
+      '采集委托·杂务中获得的金币按最大探索格数×5提升',
     );
   });
 

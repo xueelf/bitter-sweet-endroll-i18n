@@ -171,7 +171,8 @@ interface FragmentTable {
 
 /** 显示层兜底：按词条片段替换「代码常量 + 数据模板」拼出来的串。 */
 function fragments(text: string): string | null {
-  if (text.length < 2 || text.length > 80) {
+  // 体位名会被「・」拼成一长串，留出足够长度。
+  if (text.length < 2 || text.length > 200) {
     return null;
   }
 
