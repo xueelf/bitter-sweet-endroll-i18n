@@ -195,6 +195,39 @@ describe('translate', () => {
     );
   });
 
+  test('商店当前加成后缀和角色界面动态条件能翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-dynamic-ui',
+        label: '测试',
+        templates: [
+          {
+            from: '${target}中获得的金币按最大探索格数×${value}提升（現在：+${current}G）',
+            to: '${target}中获得的金币按最大探索格数×${value}提升（当前：+${current}G）',
+          },
+          {
+            from: '親密度${aff}の大事な話で解放',
+            to: '亲密度${aff}的重要谈话中解锁',
+          },
+          {
+            from: '次の段階まで　あと${n}',
+            to: '距离下一阶段　还差${n}',
+          },
+        ],
+      },
+    ]);
+    catalog.mergeMap('test-dynamic-ui', {
+      '採取依頼・雑用': '采集委托·杂务',
+    });
+    setLocale('test-dynamic-ui');
+
+    expect(
+      trUI('採取依頼・雑用中获得的金币按最大探索格数×5提升（現在：+1,010G）'),
+    ).toBe('采集委托·杂务中获得的金币按最大探索格数×5提升（当前：+1,010G）');
+    expect(trUI('親密度40の大事な話で解放')).toBe('亲密度40的重要谈话中解锁');
+    expect(trUI('次の段階まで　あと10')).toBe('距离下一阶段　还差10');
+  });
+
   test('探索记录奖励模板能翻译', () => {
     catalog.registerLocales([
       {
