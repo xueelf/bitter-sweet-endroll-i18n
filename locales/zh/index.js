@@ -26,6 +26,59 @@ export default {
       from: '踏破記録ボーナス：${cells}マス × ${rate}G × 50% = +${applied}G',
       to: '踏破记录奖励：${cells}格 × ${rate}G × 50% = +${applied}G',
     },
+    // 商店道具说明：格式已翻成中文，但游戏填进来的目标名仍是日文。
+    {
+      from: '使用后可使${target}无效化${value}次',
+      to: '使用后可使${target}无效化${value}次',
+    },
+    {
+      from: '使用后可使${target}恢复${value}',
+      to: '使用后可使${target}恢复${value}',
+    },
+    {
+      from: '对谈中使用可使${target}${value}阶段',
+      to: '对谈中使用可使${target}${value}阶段',
+    },
+    {
+      from: '对谈中使用可使${target}${value}',
+      to: '对谈中使用可使${target}${value}',
+    },
+    {
+      from: '使${target}的固定报酬永久 +${value}',
+      to: '使${target}的固定报酬永久 +${value}',
+    },
+    {
+      from: '使${target}的体力消耗永久 -${value}',
+      to: '使${target}的体力消耗永久 -${value}',
+    },
+    { from: '使${target}永久 +${value}', to: '使${target}永久 +${value}' },
+    {
+      from: '使用后可使${target}获得的金币 x${value}',
+      to: '使用后可使${target}获得的金币 x${value}',
+    },
+    { from: '使用后${target} x${value}', to: '使用后${target} x${value}' },
+    { from: '使用后${target} +${value}', to: '使用后${target} +${value}' },
+    {
+      from: '可作为${target}送出（购入时 +${value}个）',
+      to: '可作为${target}送出（购入时 +${value}个）',
+    },
+    {
+      from: '使${target}每区格获得的金币永久 +${value}',
+      to: '使${target}每区格获得的金币永久 +${value}',
+    },
+    {
+      from: '使${target}每1个普通矿石获得的金币永久 +${value}',
+      to: '使${target}每1个普通矿石获得的金币永久 +${value}',
+    },
+    // 商店篇章/乐谱的进度解锁条件。
+    {
+      from: '${a}と${b}のストーリー進捗率${pct}%で解放',
+      to: '${a}和${b}的故事进度达到${pct}%后解锁',
+    },
+    {
+      from: '${name}のストーリー進捗率${pct}%で解放',
+      to: '${name}的故事进度达到${pct}%后解锁',
+    },
     { from: '冒険者ランク${rank}で解放', to: '冒险者等级 ${rank} 解锁' },
     { from: '冒険者ランク${rank}で開放', to: '冒险者等级 ${rank} 解锁' },
     { from: 'スロット${slot} に保存しました', to: '已保存到槽位 ${slot}' },
@@ -91,6 +144,7 @@ export default {
     雑用の固定報酬: '杂务的固定报酬',
     次の雑用: '下一次杂务',
     本日の雑用: '今天的杂务',
+    本日の雑用の仕事量と体力消费: '今天杂务的工作量与体力消耗',
     // 寝室页的静态标签与提示：抽取器只抓脚本里的字符串，这些抓不到，补在这里。
     '興奮段階を上下します（絶頂へ進んでもシーンは終了しません）':
       '上下调节兴奋阶段（进入绝顶后场景也不会结束）',

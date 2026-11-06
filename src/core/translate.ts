@@ -65,7 +65,26 @@ function lookup(text: string): string | null {
 
 /** 模板占位里带出来的值可能也是日文，先按词典/片段单独翻一遍。 */
 function translateCapture(value: string): string {
-  return lookup(value) ?? fragments(value) ?? value;
+  const direct = lookup(value) ?? fragments(value);
+  if (direct) {
+    return direct;
+  }
+
+  // 「ふれあい+30」「エッチ慣れ段階+1阶段」这类目标名 + 数值：
+  // 在数字/正负号前切开，只翻前缀。
+  for (let end = value.length - 1; end > 0; end -= 1) {
+    const suffix = value.slice(end);
+    if (!/^[+\-−]?\d/.test(suffix)) {
+      continue;
+    }
+    const prefix = value.slice(0, end);
+    const translated = lookup(prefix) ?? fragments(prefix);
+    if (translated) {
+      return translated + suffix;
+    }
+  }
+
+  return value;
 }
 
 /** 展开编译模板里的 $1、$2 与转义后的 $$。 */
@@ -435,16 +454,21 @@ export function trUI(text: string): string {
     return text;
   }
 
-  // 数据层先翻译、游戏再渲染时，DOM 里抓到的是译文；切回原文要先反查。
-  const source = sourceText(text);
   if (isDefault()) {
-    return source;
+    return sourceText(text);
   }
 
+  // 当前语言能直接命中的 KV/模板优先，避免把已翻译的串再反查成日文。
+  const direct = lookup(text) ?? template(text) ?? decorated(text);
+  if (direct !== null) {
+    return direct;
+  }
+
+  // 数据层先翻译、游戏再渲染时，DOM 里抓到的是译文；切回原文要先反查。
+  const source = sourceText(text);
   // 数据模板已经填过值时，整串查表命中不了，按占位符重新套当前语言。
   const localized = dataTranslated(source) ?? source;
 
-  // KV 整串命中后直接返回，不再拿翻译结果做二次片段替换。
   const exact = lookup(localized);
   if (exact !== null) {
     return exact;
@@ -479,10 +503,16 @@ export function trHTML(html: string): string {
     return html;
   }
 
-  const source = sourceText(html);
   if (isDefault()) {
-    return source;
+    return sourceText(html);
   }
+
+  const direct = lookup(html) ?? template(html);
+  if (direct !== null) {
+    return direct;
+  }
+
+  const source = sourceText(html);
   const localized = dataTranslated(source) ?? source;
   const translated = lookup(localized) ?? template(localized);
   if (translated !== null) {

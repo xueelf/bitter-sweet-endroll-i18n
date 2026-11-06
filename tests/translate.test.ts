@@ -120,6 +120,80 @@ describe('translate', () => {
     expect(trUI('獲得G x1.5')).toBe('获得G x1.5');
   });
 
+  test('商店道具说明里的目标名也会翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-shop-desc',
+        label: '测试',
+        templates: [
+          {
+            from: '对谈中使用可使${target}${value}阶段',
+            to: '对谈中使用可使${target}${value}阶段',
+          },
+          {
+            from: '对谈中使用可使${target}${value}',
+            to: '对谈中使用可使${target}${value}',
+          },
+          {
+            from: '使用后可使${target}获得的金币 x${value}',
+            to: '使用后可使${target}获得的金币 x${value}',
+          },
+          {
+            from: '使用后${target} x${value}',
+            to: '使用后${target} x${value}',
+          },
+        ],
+      },
+    ]);
+    catalog.mergeMap('test-shop-desc', {
+      ふれあい: '亲密',
+      親密度: '亲密度',
+      エッチ慣れ段階: '亲热熟练阶段',
+      次の雑用: '下一次杂务',
+      本日の雑用の仕事量と体力消費: '今天杂务的工作量与体力消耗',
+      本日の雑用の仕事量と体力消费: '今天杂务的工作量与体力消耗',
+    });
+    setLocale('test-shop-desc');
+
+    expect(trUI('对谈中使用可使ふれあい+30')).toBe('对谈中使用可使亲密+30');
+    expect(trUI('对谈中使用可使エッチ慣れ段階+1阶段')).toBe(
+      '对谈中使用可使亲热熟练阶段+1阶段',
+    );
+    expect(trUI('使用后可使次の雑用获得的金币 x2')).toBe(
+      '使用后可使下一次杂务获得的金币 x2',
+    );
+    expect(trUI('使用后本日の雑用の仕事量と体力消费 x3')).toBe(
+      '使用后今天杂务的工作量与体力消耗 x3',
+    );
+  });
+
+  test('商店进度解锁条件能翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-shop-unlock',
+        label: '测试',
+        templates: [
+          {
+            from: '${a}と${b}のストーリー進捗率${pct}%で解放',
+            to: '${a}和${b}的故事进度达到${pct}%后解锁',
+          },
+          {
+            from: '${name}のストーリー進捗率${pct}%で解放',
+            to: '${name}的故事进度达到${pct}%后解锁',
+          },
+        ],
+      },
+    ]);
+    setLocale('test-shop-unlock');
+
+    expect(trUI('梅尔维のストーリー進捗率100%で解放')).toBe(
+      '梅尔维的故事进度达到100%后解锁',
+    );
+    expect(trUI('艾玛と梅尔维のストーリー進捗率40%で解放')).toBe(
+      '艾玛和梅尔维的故事进度达到40%后解锁',
+    );
+  });
+
   test('踏破记录奖励模板能翻译', () => {
     catalog.registerLocales([
       {
