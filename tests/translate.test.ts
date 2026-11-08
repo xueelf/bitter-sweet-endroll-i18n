@@ -11,7 +11,7 @@ import {
 } from '#/core/translate';
 
 describe('translate', () => {
-  test('体力提示按纯文本模板翻译', () => {
+  test('体力变更（文本）', () => {
     catalog.registerLocales([
       {
         id: 'test-toast-text',
@@ -33,7 +33,7 @@ describe('translate', () => {
     expect(trUI('体力が 20 回復しました')).toBe('体力恢复了 20 点');
   });
 
-  test('体力提示按带 <b> 的 HTML 模板翻译', () => {
+  test('体力变更（HTML）', () => {
     catalog.registerLocales([
       {
         id: 'test-toast-html',
@@ -67,7 +67,7 @@ describe('translate', () => {
     );
   });
 
-  test('后注册词条会让片段缓存失效', () => {
+  test('片段缓存', () => {
     catalog.registerLocales([{ id: 'test-fragment-cache', label: '测试' }]);
     catalog.mergeMap('test-fragment-cache', { ABC: '甲' });
     setLocale('test-fragment-cache');
@@ -78,7 +78,7 @@ describe('translate', () => {
     expect(trUI('XYABC')).toBe('乙甲');
   });
 
-  test('含平假名的句子不拿词典短词做自动片段替换', () => {
+  test('平假名句子片段替换', () => {
     catalog.registerLocales([
       {
         id: 'test-fragment-guard',
@@ -99,7 +99,7 @@ describe('translate', () => {
     expect(trUI('手動で')).toBe('手动地');
   });
 
-  test('手工片段能补全含平假名的 UI 标签', () => {
+  test('手工片段 UI 标签', () => {
     catalog.registerLocales([
       {
         id: 'test-fragment-ui',
@@ -121,7 +121,7 @@ describe('translate', () => {
     expect(trUI('獲得G x1.5')).toBe('获得G x1.5');
   });
 
-  test('商店道具说明里的目标名也会翻译', () => {
+  test('商店道具目标名', () => {
     catalog.registerLocales([
       {
         id: 'test-shop-desc',
@@ -167,7 +167,7 @@ describe('translate', () => {
     );
   });
 
-  test('商店进度解锁条件能翻译', () => {
+  test('商店进度解锁', () => {
     catalog.registerLocales([
       {
         id: 'test-shop-unlock',
@@ -194,7 +194,7 @@ describe('translate', () => {
     );
   });
 
-  test('商店当前加成后缀和角色界面动态条件能翻译', () => {
+  test('商店加成与角色条件', () => {
     catalog.registerLocales([
       {
         id: 'test-dynamic-ui',
@@ -227,7 +227,7 @@ describe('translate', () => {
     expect(trUI('次の段階まで　あと10')).toBe('距离下一阶段　还差10');
   });
 
-  test('探索记录奖励模板能翻译', () => {
+  test('探索记录奖励', () => {
     catalog.registerLocales([
       {
         id: 'test-explore-bonus',
@@ -251,7 +251,7 @@ describe('translate', () => {
     );
   });
 
-  test('卧室邀请解锁提示能翻译', () => {
+  test('卧室邀请解锁', () => {
     catalog.registerLocales([
       {
         id: 'test-bedroom-invite',
@@ -281,7 +281,59 @@ describe('translate', () => {
     );
   });
 
-  test('商店体位说明里的体位名能翻译', () => {
+  test('人物关系变化', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-relationship-toast',
+        label: '测试',
+        templates: [
+          {
+            from: '${who}の好感度が${value}になりました',
+            to: '与${who}的亲密度变成了${value}',
+          },
+          {
+            from: '${who}の親密度が${value}になりました',
+            to: '与${who}的亲密度变成了${value}',
+          },
+          { from: '${who}と仲直りしました', to: '与${who}和好了' },
+          {
+            from: '仲直りの大事な話が終わるまで好感度は${n}で止まります',
+            to: '和好的重要谈话结束前亲密度会停在${n}',
+          },
+          {
+            from: '仲直りの大事な話が終わるまで親密度は${n}で止まります',
+            to: '和好的重要谈话结束前亲密度会停在${n}',
+          },
+          {
+            from: 'エッチ慣れ段階が「${label}」になりました',
+            to: '亲热熟练阶段变成了「${label}」',
+          },
+        ],
+      },
+    ]);
+    catalog.mergeMap('test-relationship-toast', {
+      エマ: '艾玛',
+      相手: '对象',
+      初めて: '初次',
+      熟練: '熟练',
+    });
+    setLocale('test-relationship-toast');
+
+    expect(trUI('エマの親密度が0になりました')).toBe('与艾玛的亲密度变成了0');
+    expect(trUI('エマの好感度が0になりました')).toBe('与艾玛的亲密度变成了0');
+    expect(trUI('エマと仲直りしました')).toBe('与艾玛和好了');
+    expect(trUI('仲直りの大事な話が終わるまで親密度は30で止まります')).toBe(
+      '和好的重要谈话结束前亲密度会停在30',
+    );
+    expect(trUI('仲直りの大事な話が終わるまで好感度は30で止まります')).toBe(
+      '和好的重要谈话结束前亲密度会停在30',
+    );
+    expect(trUI('エッチ慣れ段階が「熟練」になりました')).toBe(
+      '亲热熟练阶段变成了「熟练」',
+    );
+  });
+
+  test('商店体位名', () => {
     catalog.registerLocales([
       {
         id: 'test-shop-position',
@@ -314,7 +366,7 @@ describe('translate', () => {
     ).toBe('作为重要物品持有期间，放尿・角色扮演・播种压制・肛交可选择');
   });
 
-  test('商店探索道具说明里的目标名能翻译', () => {
+  test('商店探索道具目标名', () => {
     catalog.registerLocales([
       {
         id: 'test-shop-explore',
@@ -345,7 +397,7 @@ describe('translate', () => {
     );
   });
 
-  test('住所休息说明的 <b> 体力值模板能翻译', () => {
+  test('住所休息体力模板', () => {
     catalog.registerLocales([
       {
         id: 'test-rest-html',
@@ -365,7 +417,7 @@ describe('translate', () => {
     );
   });
 
-  test('角色名 + 亲密度槽用模板翻译', () => {
+  test('角色名与亲密度', () => {
     catalog.registerLocales([
       {
         id: 'test-affinity-gauge',
@@ -382,7 +434,7 @@ describe('translate', () => {
     expect(trUI('艾玛 親密度 30')).toBe('艾玛 亲密度 30');
   });
 
-  test('运行时槽位标签用 KV 短语翻译', () => {
+  test('运行时槽位', () => {
     catalog.registerLocales([
       {
         id: 'test-runtime-gauge',
@@ -395,7 +447,7 @@ describe('translate', () => {
     expect(trUI('逃走ゲージ')).toBe('逃跑槽');
   });
 
-  test('运行期序号占位的数据模板能翻译填值后的串', () => {
+  test('序号占位数据模板', () => {
     catalog.registerLocales([{ id: 'test-runtime-data', label: '测试' }]);
     catalog.mergeMap('test-runtime-data', {
       '{1}の固定報酬を永続的に +{0}': '使{1}的固定报酬永久 +{0}',
@@ -405,7 +457,7 @@ describe('translate', () => {
     expect(trUI('雑用の固定報酬を永続的に +5')).toBe('使雑用的固定报酬永久 +5');
   });
 
-  test('模板译文里的字面美元符号原样保留', () => {
+  test('模板美元符号', () => {
     catalog.registerLocales([{ id: 'test-template-dollar', label: '测试' }]);
     catalog.mergeMap('test-template-dollar', {
       '価格${n}': '价格 $${a}',
@@ -415,7 +467,7 @@ describe('translate', () => {
     expect(trUI('価格100')).toBe('价格 $100');
   });
 
-  test('模板拆开完整短语时用 KV 短语补全', () => {
+  test('模板短语补全', () => {
     catalog.registerLocales([
       {
         id: 'test-template-fragment',
@@ -439,7 +491,7 @@ describe('translate', () => {
     );
   });
 
-  test('未命中的日文会记录，命中不会', () => {
+  test('未命中记录', () => {
     catalog.registerLocales([{ id: 'test-missing', label: '测试' }]);
     catalog.mergeMap('test-missing', { 設定: '设置' });
     setLocale('test-missing');
@@ -453,7 +505,7 @@ describe('translate', () => {
     clearMissingTranslations();
   });
 
-  test('模板占位里的日文值也会翻译', () => {
+  test('模板占位值', () => {
     catalog.registerLocales([{ id: 'test-capture', label: '测试' }]);
     catalog.mergeMap('test-capture', {
       '使用すると{1}を{0}段階': '使用后可使{1}提升{0}阶段',
@@ -466,7 +518,7 @@ describe('translate', () => {
     );
   });
 
-  test('作者备注块不会显示在正文里', () => {
+  test('代码注释过滤', () => {
     catalog.registerLocales([{ id: 'test-developer-note', label: '测试' }]);
     setLocale('test-developer-note');
 
