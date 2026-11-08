@@ -152,7 +152,6 @@ describe('translate', () => {
       エッチ慣れ段階: '亲热熟练阶段',
       次の雑用: '下一次杂务',
       本日の雑用の仕事量と体力消費: '今天杂务的工作量与体力消耗',
-      本日の雑用の仕事量と体力消费: '今天杂务的工作量与体力消耗',
     });
     setLocale('test-shop-desc');
 
@@ -163,7 +162,7 @@ describe('translate', () => {
     expect(trUI('使用后可使次の雑用获得的金币 x2')).toBe(
       '使用后可使下一次杂务获得的金币 x2',
     );
-    expect(trUI('使用后本日の雑用の仕事量と体力消费 x3')).toBe(
+    expect(trUI('使用后本日の雑用の仕事量と体力消費 x3')).toBe(
       '使用后今天杂务的工作量与体力消耗 x3',
     );
   });
@@ -249,6 +248,36 @@ describe('translate', () => {
 
     expect(trUI('踏破記録ボーナス：202マス × 5G × 50% = +505G')).toBe(
       '探索记录奖励：202格 × 5G × 50% = +505G',
+    );
+  });
+
+  test('卧室邀请解锁提示能翻译', () => {
+    catalog.registerLocales([
+      {
+        id: 'test-bedroom-invite',
+        label: '测试',
+        templates: [
+          {
+            from: '${name}を寝室に誘えるようになりました',
+            to: '现在可以邀请${name}到卧室了',
+          },
+        ],
+      },
+    ]);
+    catalog.mergeMap('test-bedroom-invite', {
+      エマ: '艾玛',
+      相手: '对象',
+    });
+    setLocale('test-bedroom-invite');
+
+    expect(trUI('エマを寝室に誘えるようになりました')).toBe(
+      '现在可以邀请艾玛到卧室了',
+    );
+    expect(trUI('艾玛を寝室に誘えるようになりました')).toBe(
+      '现在可以邀请艾玛到卧室了',
+    );
+    expect(trUI('相手を寝室に誘えるようになりました')).toBe(
+      '现在可以邀请对象到卧室了',
     );
   });
 
