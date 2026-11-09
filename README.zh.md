@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> 游戏官方已于 2026 年 11 月 5 日添加多语言支持，因此本项目停止更新。仓库将转为归档状态，感谢一直以来的支持~
+
 # Bitter Sweet Endroll i18n
 
 游戏 [ビタースイートエンドロール ～Bitter Sweets／The End～](https://www.dlsite.com/aix/work/=/product_id/RJ01685413.html) 的非官方多语言补丁，在程序「设置」界面内添加多语言菜单，游戏内可随时切换任意语言。

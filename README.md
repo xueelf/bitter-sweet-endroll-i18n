@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> The game officially added multilingual support on 5 November 2026, so this project has stopped updating. The repository will be archived, thank you for your support~
+
 # Bitter Sweet Endroll i18n
 
 An unofficial multilingual patch for the game [ビタースイートエンドロール ～Bitter Sweets／The End～](https://www.dlsite.com/aix/work/=/product_id/RJ01685413.html), which adds a multilingual menu to the program's "Settings" interface, allowing any language to be switched at any time in-game.
